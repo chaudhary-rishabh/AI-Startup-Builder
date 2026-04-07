@@ -1,0 +1,24 @@
+{
+  "name": "@repo/db",
+  "version": "0.0.1",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsup src/index.ts --dts --format cjs,esm --out-dir dist",
+    "clean": "rimraf dist .turbo"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.32.0",
+    "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "@repo/types": "workspace:*",
+    "@types/pg": "^8.11.0",
+    "rimraf": "^5.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0"
+  }
+}
