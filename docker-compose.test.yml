@@ -1,0 +1,45 @@
+version: "3.9"
+
+# Isolated test containers — different ports, no shared state with dev.
+# Application services are NOT started here; integration tests use
+# testcontainers to spin up what they need per test suite.
+
+networks:
+  ai-startup-test-network:
+    driver: bridge
+
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: ai-startup-postgres-test
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: test_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: testpass
+    ports:
+      - "5433:5432"
+    networks:
+      - ai-startup-test-network
+    tmpfs:
+      - /var/lib/postgresql/data   # in-memory for speed — data discarded on stop
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d test_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis-test:
+    image: redis:7-alpine
+    container_name: ai-startup-redis-test
+    restart: unless-stopped
+    command: redis-server --save ""   # disable persistence for test speed
+    ports:
+      - "6380:6379"
+    networks:
+      - ai-startup-test-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10

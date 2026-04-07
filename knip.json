@@ -1,0 +1,82 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    "apps/web": {
+      "entry": [
+        "app/**/{page,layout,route}.tsx",
+        "middleware.ts"
+      ],
+      "project": [
+        "app/**/*.{ts,tsx}",
+        "components/**/*.{ts,tsx}",
+        "hooks/**/*.{ts,tsx}",
+        "lib/**/*.{ts,tsx}",
+        "store/**/*.{ts,tsx}",
+        "providers/**/*.{ts,tsx}"
+      ]
+    },
+    "apps/admin": {
+      "entry": [
+        "app/**/{page,layout,route}.tsx",
+        "middleware.ts"
+      ],
+      "project": [
+        "app/**/*.{ts,tsx}",
+        "components/**/*.{ts,tsx}",
+        "hooks/**/*.{ts,tsx}",
+        "lib/**/*.{ts,tsx}"
+      ]
+    },
+    "services/api-gateway": {
+      "entry": ["src/index.ts"]
+    },
+    "services/auth-service": {
+      "entry": ["src/index.ts"]
+    },
+    "services/user-service": {
+      "entry": ["src/index.ts"]
+    },
+    "services/project-service": {
+      "entry": ["src/index.ts"]
+    },
+    "services/ai-service": {
+      "entry": ["src/index.ts"]
+    },
+    "services/rag-service": {
+      "entry": ["src/index.ts"]
+    },
+    "services/billing-service": {
+      "entry": ["src/index.ts"]
+    },
+    "services/notification-service": {
+      "entry": ["src/index.ts"]
+    },
+    "services/analytics-service": {
+      "entry": ["src/index.ts"]
+    },
+    "packages/ui": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.tsx"]
+    },
+    "packages/types": {
+      "entry": ["src/index.ts"]
+    },
+    "packages/validators": {
+      "entry": ["src/index.ts"]
+    },
+    "packages/db": {
+      "entry": ["src/index.ts"]
+    },
+    "packages/config": {
+      "entry": ["eslint/index.js", "typescript/index.json"]
+    }
+  },
+  "ignore": [
+    "**/*.stories.tsx",
+    "**/tests/**",
+    "**/*.config.{ts,js}",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.next/**"
+  ]
+}
