@@ -5,11 +5,8 @@
     "lib": ["dom", "dom.iterable", "ES2022"],
     "jsx": "preserve",
     "allowJs": true,
-    "incremental": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
     "plugins": [{ "name": "next" }]
   }
 }

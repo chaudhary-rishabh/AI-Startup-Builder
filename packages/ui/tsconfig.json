@@ -1,12 +1,16 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "extends": "@repo/config/typescript/nextjs.json",
+  "extends": "../config/typescript/nextjs.json",
   "compilerOptions": {
     "jsx": "react-jsx",
     "lib": ["dom", "dom.iterable", "ES2022"],
     "moduleResolution": "Bundler",
     "module": "ESNext",
-    "noEmit": true
+    "noEmit": false,
+    "incremental": false,
+    "allowImportingTsExtensions": false,
+    "outDir": "dist",
+    "rootDir": "src"
   },
   "include": ["src"],
   "exclude": ["dist", "node_modules", "**/*.stories.tsx", "stories"]

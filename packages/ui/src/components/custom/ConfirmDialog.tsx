@@ -43,11 +43,11 @@ export function ConfirmDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={loading ? undefined : onOpenChange}>
+    <Dialog open={open} onOpenChange={loading ? () => { /* blocked while loading */ } : onOpenChange}>
       <DialogContent
         className="sm:max-w-md"
         // Prevent close via outside click while loading
-        onInteractOutside={loading ? (e) => e.preventDefault() : undefined}
+        {...(loading ? { onInteractOutside: (e: { preventDefault: () => void }) => e.preventDefault() } : {})}
       >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

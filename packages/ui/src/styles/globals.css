@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #F5F0E8;
+    --sidebar: #EDE5D8;
+    --divider: #E8DFD0;
+    --brand: #8B6F47;
+    --brand-dark: #5C4425;
+    --brand-light: #C4A882;
+  }
+
+  * {
+    @apply border-divider;
+  }
+
+  body {
+    @apply bg-background text-brand-dark font-body;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display;
+  }
+
+  code, pre, kbd {
+    @apply font-code;
+  }
+}

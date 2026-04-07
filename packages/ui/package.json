@@ -7,7 +7,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "tsup src/index.ts --dts --format cjs,esm --external react --external react-dom --out-dir dist",
+    "build": "tsup src/index.ts --dts --format cjs,esm --external react --external react-dom --out-dir dist --tsconfig tsconfig.json",
     "storybook": "storybook dev -p 6006 -c stories/.storybook",
     "build-storybook": "storybook build -c stories/.storybook",
     "clean": "rimraf dist .turbo"
