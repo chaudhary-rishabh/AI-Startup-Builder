@@ -3,14 +3,18 @@
   "version": "0.0.1",
   "private": true,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./styles": "./src/styles/globals.css"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsup src/index.ts --dts --format cjs,esm --external react --external react-dom --out-dir dist --tsconfig tsconfig.json",
-    "storybook": "storybook dev -p 6006 -c stories/.storybook",
-    "build-storybook": "storybook build -c stories/.storybook",
-    "clean": "rimraf dist .turbo"
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "clean": "rimraf dist .turbo coverage storybook-static"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.0",
@@ -31,14 +35,24 @@
     "tailwind-merge": "^2.4.0"
   },
   "devDependencies": {
+    "@storybook/addon-a11y": "^8.0.0",
     "@storybook/addon-essentials": "^8.0.0",
+    "@storybook/addon-interactions": "^8.0.0",
     "@storybook/react-vite": "^8.0.0",
+    "@storybook/test": "^8.0.0",
+    "@testing-library/jest-dom": "^6.4.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/user-event": "^14.5.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "jsdom": "^24.0.0",
     "rimraf": "^5.0.0",
     "tailwindcss": "^3.4.0",
     "tsup": "^8.0.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
   },
   "peerDependencies": {
     "react": "^18.3.0",

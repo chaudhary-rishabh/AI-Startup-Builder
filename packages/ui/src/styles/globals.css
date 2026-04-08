@@ -2,29 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design-system CSS custom properties ────────────────────────────────────
+   These are consumed directly by both apps/web and apps/admin via their own
+   tailwind.config.ts that extends packages/ui/tailwind.config.ts.           */
 @layer base {
   :root {
-    --background: #F5F0E8;
-    --sidebar: #EDE5D8;
-    --divider: #E8DFD0;
-    --brand: #8B6F47;
-    --brand-dark: #5C4425;
-    --brand-light: #C4A882;
+    /* Brand palette */
+    --color-brand-brown: #8B6F47;
+    --color-brand-brown-dark: #5C4425;
+    --color-brand-brown-light: #C4A882;
+
+    /* Backgrounds */
+    --color-background-beige: #F5F0E8;
+    --color-sidebar-beige: #EDE5D8;
+    --color-card: #FFFFFF;
+    --color-output-panel: #FAF8F5;
+    --color-divider: #E8DFD0;
+
+    /* Semantic */
+    --color-success: #16A34A;
+    --color-error: #DC2626;
+    --color-warning: #D97706;
+
+    /* Mode accents */
+    --color-design-mode: #7C3AED;
+    --color-dev-mode: #0D9488;
+
+    /* Typography */
+    --font-heading: Georgia, ui-serif, serif;
+    --font-body: Arial, ui-sans-serif, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, monospace;
   }
 
-  * {
-    @apply border-divider;
-  }
-
+  /* Apply typography to base elements */
   body {
-    @apply bg-background text-brand-dark font-body;
+    @apply bg-background text-brand-dark antialiased;
+    font-family: var(--font-body);
   }
 
-  h1, h2, h3, h4 {
-    @apply font-display;
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    @apply text-brand-dark;
   }
 
-  code, pre, kbd {
-    @apply font-code;
+  code,
+  pre,
+  kbd,
+  samp {
+    font-family: var(--font-mono);
+  }
+
+  /* Focus ring — consistent across interactive elements */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-brand ring-offset-2;
+  }
+
+  /* Smooth scrolling everywhere */
+  html {
+    scroll-behavior: smooth;
   }
 }
