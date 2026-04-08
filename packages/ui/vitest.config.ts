@@ -33,6 +33,10 @@ export default defineConfig({
         '**/stories/**',
         '**/.storybook/**',
         '**/styles/**',
+        // Barrel file — re-exports only, not testable business logic
+        'src/index.ts',
+        // Radix UI wrappers — thin pass-throughs, no custom logic to test
+        'src/components/shadcn/**',
       ],
     },
   },

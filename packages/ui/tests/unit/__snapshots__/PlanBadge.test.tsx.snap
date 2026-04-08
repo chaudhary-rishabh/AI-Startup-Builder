@@ -1,0 +1,26 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PlanBadge > matches snapshot for all three plans 1`] = `
+<div>
+  <div>
+    <span
+      aria-label="Plan: Free"
+      class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 bg-slate-100 text-slate-600 ring-slate-200"
+    >
+      Free
+    </span>
+    <span
+      aria-label="Plan: Pro"
+      class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 bg-[#8B6F47] text-white ring-[#8B6F47]"
+    >
+      Pro
+    </span>
+    <span
+      aria-label="Plan: Enterprise"
+      class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 bg-slate-800 text-white ring-slate-700"
+    >
+      Enterprise
+    </span>
+  </div>
+</div>
+`;

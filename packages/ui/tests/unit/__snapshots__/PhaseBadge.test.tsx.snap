@@ -1,0 +1,86 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PhaseBadge > matches snapshot for all 6 phases 1`] = `
+<div>
+  <div>
+    <span
+      aria-label="Phase 1: Validate"
+      class="inline-flex items-center gap-1 rounded-full font-semibold ring-1 bg-violet-100 text-violet-800 ring-violet-200 px-2.5 py-0.5 text-xs"
+    >
+      <span
+        class="font-bold"
+      >
+        1
+      </span>
+      <span>
+        Validate
+      </span>
+    </span>
+    <span
+      aria-label="Phase 2: Plan"
+      class="inline-flex items-center gap-1 rounded-full font-semibold ring-1 bg-blue-100 text-blue-800 ring-blue-200 px-2.5 py-0.5 text-xs"
+    >
+      <span
+        class="font-bold"
+      >
+        2
+      </span>
+      <span>
+        Plan
+      </span>
+    </span>
+    <span
+      aria-label="Phase 3: Design"
+      class="inline-flex items-center gap-1 rounded-full font-semibold ring-1 bg-purple-100 text-purple-800 ring-purple-200 px-2.5 py-0.5 text-xs"
+    >
+      <span
+        class="font-bold"
+      >
+        3
+      </span>
+      <span>
+        Design
+      </span>
+    </span>
+    <span
+      aria-label="Phase 4: Build"
+      class="inline-flex items-center gap-1 rounded-full font-semibold ring-1 bg-teal-100 text-teal-800 ring-teal-200 px-2.5 py-0.5 text-xs"
+    >
+      <span
+        class="font-bold"
+      >
+        4
+      </span>
+      <span>
+        Build
+      </span>
+    </span>
+    <span
+      aria-label="Phase 5: Deploy"
+      class="inline-flex items-center gap-1 rounded-full font-semibold ring-1 bg-amber-100 text-amber-800 ring-amber-200 px-2.5 py-0.5 text-xs"
+    >
+      <span
+        class="font-bold"
+      >
+        5
+      </span>
+      <span>
+        Deploy
+      </span>
+    </span>
+    <span
+      aria-label="Phase 6: Growth"
+      class="inline-flex items-center gap-1 rounded-full font-semibold ring-1 bg-green-100 text-green-800 ring-green-200 px-2.5 py-0.5 text-xs"
+    >
+      <span
+        class="font-bold"
+      >
+        6
+      </span>
+      <span>
+        Growth
+      </span>
+    </span>
+  </div>
+</div>
+`;
