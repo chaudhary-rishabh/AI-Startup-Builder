@@ -7,7 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
     "test:watch": "vitest",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
@@ -16,17 +16,26 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@hono/node-server": "^1.12.0",
+    "@hono/zod-validator": "^0.4.0",
     "@repo/db": "workspace:*",
     "@repo/types": "workspace:*",
     "@repo/validators": "workspace:*",
+    "bcryptjs": "^2.4.3",
     "drizzle-orm": "^0.32.0",
+    "hono": "^4.5.0",
+    "ioredis": "^5.4.0",
+    "jose": "^5.6.0",
     "pg": "^8.12.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.0.0",
     "@types/pg": "^8.11.0",
+    "@vitest/coverage-v8": "^2.0.0",
     "drizzle-kit": "^0.23.0",
+    "ioredis-mock": "^8.9.0",
     "tsx": "^4.16.0",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"

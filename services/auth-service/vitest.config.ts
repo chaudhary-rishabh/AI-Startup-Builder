@@ -7,5 +7,16 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
     testTimeout: 30_000,
     hookTimeout: 30_000,
+    coverage: {
+      provider: 'v8',
+      include: ['src/services/**/*.ts', 'src/routes/**/*.ts'],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 80,
+        statements: 80,
+      },
+      reporter: ['text', 'json-summary'],
+    },
   },
 })
