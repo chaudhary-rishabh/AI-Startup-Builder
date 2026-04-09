@@ -96,7 +96,7 @@ function varsForService(service: z.infer<typeof ServiceSchema>): readonly string
 
 function isSensitiveName(name: string): boolean {
   if (name.startsWith('NEXT_PUBLIC_')) return false
-  if (name === 'DATABASE_URL') return true
+  if (name === 'DATABASE_URL' || name === 'REDIS_URL') return true
   const u = name.toUpperCase()
   return /SECRET|PRIVATE|PASSWORD|TOKEN|_KEY/.test(u)
 }
