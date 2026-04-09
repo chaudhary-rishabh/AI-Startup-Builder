@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "turbo run dev",
+    "predev": "pnpm run check-env -- --service all",
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
@@ -12,7 +13,11 @@
     "db:migrate": "turbo run db:migrate",
     "db:generate": "turbo run db:generate",
     "clean": "turbo run clean && rimraf node_modules",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "generate-keys": "pnpm --filter @ai-startup-builder/scripts generate-keys",
+    "seed": "pnpm --filter @ai-startup-builder/scripts seed",
+    "reset-db": "pnpm --filter @ai-startup-builder/scripts reset-db",
+    "check-env": "pnpm --filter @ai-startup-builder/scripts check-env"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.0",
