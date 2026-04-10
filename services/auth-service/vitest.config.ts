@@ -14,7 +14,6 @@ export default defineConfig({
         lines: 80,
         functions: 80,
         statements: 80,
-        // Route handlers and crypto error paths create many branches; line/statement targets stay at 80%.
         branches: 68,
       },
       reporter: ['text', 'json-summary'],
