@@ -1,6 +1,7 @@
 import type { AuthBruteForceDetectedEvent } from '@repo/types'
 
 import { env } from '../config/env.js'
+import { publishAuthBruteForceDetected } from '../events/publisher.js'
 import { adminBruteForceKey, bruteForceKey, getRedis } from './redis.service.js'
 
 const ADMIN_LOGIN_MAX_ATTEMPTS = 5
@@ -68,14 +69,7 @@ export async function recordFailedAttempt(ip: string): Promise<void> {
       lockedUntil: new Date(state.lockedUntil).toISOString(),
     }
     try {
-      await redis.xadd(
-        'auth:events',
-        '*',
-        'type',
-        'auth.brute_force_detected',
-        'payload',
-        JSON.stringify(event),
-      )
+      await publishAuthBruteForceDetected(event)
     } catch (e) {
       console.error('[auth-service] Failed to publish brute-force event:', e)
     }
@@ -135,14 +129,7 @@ export async function recordAdminFailedAttempt(ip: string): Promise<void> {
       lockedUntil: new Date(state.lockedUntil).toISOString(),
     }
     try {
-      await redis.xadd(
-        'auth:events',
-        '*',
-        'type',
-        'auth.admin_brute_force_detected',
-        'payload',
-        JSON.stringify(event),
-      )
+      await publishAuthBruteForceDetected(event)
     } catch (e) {
       console.error('[auth-service] Failed to publish admin brute-force event:', e)
     }

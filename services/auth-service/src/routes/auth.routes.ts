@@ -33,7 +33,7 @@ import {
   hashPassword,
   hashToken,
 } from '../services/password.service.js'
-import { getRedis } from '../services/redis.service.js'
+import { publishUserPasswordReset, publishUserRegistered } from '../events/publisher.js'
 
 const LogoutBodySchema = z.object({
   refreshToken: z.string().min(1),
@@ -98,22 +98,7 @@ auth.post(
     }
 
     try {
-      await getRedis().xadd(
-        'platform:events',
-        '*',
-        'type',
-        'user.registered',
-        'userId',
-        event.userId,
-        'email',
-        event.email,
-        'name',
-        event.name,
-        'plan',
-        event.plan,
-        'createdAt',
-        event.createdAt,
-      )
+      await publishUserRegistered(event)
     } catch (e) {
       console.error('[auth-service] Failed to publish user.registered event:', e)
     }
@@ -359,18 +344,7 @@ auth.post(
       })
 
       try {
-        await getRedis().xadd(
-          'platform:events',
-          '*',
-          'type',
-          'user.password_reset_requested',
-          'userId',
-          user.id,
-          'email',
-          user.email,
-          'resetToken',
-          resetToken,
-        )
+        await publishUserPasswordReset(user.id)
       } catch (e) {
         console.error('[auth-service] Failed to publish password reset event:', e)
       }
