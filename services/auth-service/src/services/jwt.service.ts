@@ -1,5 +1,6 @@
 import type { JWTPayload } from 'jose'
 import { errors, importPKCS8, importSPKI, jwtVerify, SignJWT } from 'jose'
+import { randomUUID } from 'node:crypto'
 
 import { env } from '../config/env.js'
 
@@ -33,7 +34,7 @@ export async function signAccessToken(payload: {
 }
 
 export async function signRefreshToken(payload: { sub: string }): Promise<string> {
-  return new SignJWT({ sub: payload.sub, type: 'refresh' })
+  return new SignJWT({ sub: payload.sub, type: 'refresh', jti: randomUUID() })
     .setProtectedHeader({ alg: 'RS256' })
     .setIssuer('ai-startup-builder')
     .setAudience('ai-startup-builder-api')

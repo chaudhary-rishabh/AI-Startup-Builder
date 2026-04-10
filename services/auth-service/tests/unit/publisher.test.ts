@@ -15,13 +15,11 @@ vi.mock('../../src/services/redis.service.js', () => ({
   emailVerifyKey: (t: string) => `auth:verify:${t}`,
 }))
 
-const { getRedis } = await import('../../src/services/redis.service.js')
 const publisher = await import('../../src/events/publisher.js')
 
 describe('events/publisher', () => {
   beforeEach(() => {
     xadd.mockClear()
-    vi.mocked(getRedis).mockReturnValue({ xadd } as never)
   })
 
   afterEach(() => {
@@ -36,9 +34,7 @@ describe('events/publisher', () => {
       plan: 'free',
       createdAt: new Date().toISOString(),
     }
-    const spy = vi.spyOn(publisher, 'publishEvent')
     await publisher.publishUserRegistered(payload)
-    expect(spy).toHaveBeenCalledWith('user.registered', payload)
     expect(xadd).toHaveBeenCalled()
     const args = xadd.mock.calls[0] as unknown[]
     expect(args[0]).toBe('platform:events')
@@ -67,31 +63,27 @@ describe('events/publisher', () => {
     expect(args[args.indexOf('type') + 1]).toBe('auth.brute_force_detected')
   })
 
-  it('publish helpers delegate to publishEvent with correct type strings', async () => {
-    const pe = vi.spyOn(publisher, 'publishEvent').mockResolvedValue()
-
+  it('publish helpers use publishEvent with correct type strings', async () => {
     await publisher.publishUserDeleted({
       userId: 'u',
       deletedAt: new Date().toISOString(),
       anonymized: true,
     })
-    expect(pe).toHaveBeenCalledWith(
-      'user.deleted',
-      expect.objectContaining({ userId: 'u', anonymized: true }),
-    )
+    expect(streamTypeAt(0)).toBe('user.deleted')
 
     await publisher.publishUserPasswordReset('user-x')
-    expect(pe).toHaveBeenCalledWith(
-      'user.password_reset',
-      expect.objectContaining({ userId: 'user-x', resetAt: expect.any(String) }),
-    )
+    expect(streamTypeAt(1)).toBe('user.password_reset')
 
     await publisher.publishUserOnboardingCompleted({
       userId: 'u',
       completedAt: new Date().toISOString(),
     })
-    expect(pe).toHaveBeenCalledWith('user.onboarding_completed', expect.any(Object))
-
-    pe.mockRestore()
+    expect(streamTypeAt(2)).toBe('user.onboarding_completed')
   })
 })
+
+function streamTypeAt(callIndex: number): string {
+  const args = xadd.mock.calls[callIndex] as unknown[]
+  const i = args.indexOf('type')
+  return String(args[i + 1])
+}

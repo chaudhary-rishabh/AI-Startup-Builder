@@ -66,10 +66,10 @@ export async function startEventConsumer(): Promise<void> {
 
       if (!consumerShouldRun) break
 
-      if (!messages) continue
+      if (!messages || !Array.isArray(messages)) continue
 
-      for (const [, entries] of messages) {
-        if (!entries) continue
+      for (const [, entries] of messages as [string, [string, string[]][]][]) {
+        if (!entries || !Array.isArray(entries)) continue
         for (const entry of entries) {
           const id = entry[0]
           const fields = entry[1] as string[]
