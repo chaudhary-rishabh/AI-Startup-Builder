@@ -1,7 +1,9 @@
 import type { AuthBruteForceDetectedEvent } from '@repo/types'
 
 import { env } from '../config/env.js'
-import { bruteForceKey, getRedis } from './redis.service.js'
+import { adminBruteForceKey, bruteForceKey, getRedis } from './redis.service.js'
+
+const ADMIN_LOGIN_MAX_ATTEMPTS = 5
 
 interface BruteState {
   attempts: number
@@ -92,5 +94,72 @@ export async function clearAttempts(ip: string): Promise<void> {
     await getRedis().del(bruteForceKey(ip))
   } catch (e) {
     console.error('[auth-service] Failed to clear brute-force state:', e)
+  }
+}
+
+export async function checkAdminBruteForce(
+  ip: string,
+): Promise<{ blocked: boolean; retryAfter?: number }> {
+  if (!ip) return { blocked: false }
+  const redis = getRedis()
+  const raw = await redis.get(adminBruteForceKey(ip))
+  const state = parseState(raw)
+  const now = Date.now()
+  if (state.lockedUntil > now) {
+    return { blocked: true, retryAfter: Math.max(1, Math.ceil((state.lockedUntil - now) / 1000)) }
+  }
+  return { blocked: false }
+}
+
+export async function recordAdminFailedAttempt(ip: string): Promise<void> {
+  if (!ip) return
+  const redis = getRedis()
+  const key = adminBruteForceKey(ip)
+  const ttlSec = env.BRUTE_FORCE_LOCK_MINUTES * 60
+  const raw = await redis.get(key)
+  let state = parseState(raw)
+  const now = Date.now()
+
+  if (state.lockedUntil > now) {
+    return
+  }
+
+  state.attempts += 1
+
+  if (state.attempts >= ADMIN_LOGIN_MAX_ATTEMPTS) {
+    state.lockedUntil = now + ttlSec * 1000
+    const event: AuthBruteForceDetectedEvent = {
+      userId: null,
+      ip,
+      attempts: state.attempts,
+      lockedUntil: new Date(state.lockedUntil).toISOString(),
+    }
+    try {
+      await redis.xadd(
+        'auth:events',
+        '*',
+        'type',
+        'auth.admin_brute_force_detected',
+        'payload',
+        JSON.stringify(event),
+      )
+    } catch (e) {
+      console.error('[auth-service] Failed to publish admin brute-force event:', e)
+    }
+  }
+
+  try {
+    await redis.set(key, JSON.stringify(state), 'EX', ttlSec)
+  } catch (e) {
+    console.error('[auth-service] Failed to persist admin brute-force state:', e)
+  }
+}
+
+export async function clearAdminAttempts(ip: string): Promise<void> {
+  if (!ip) return
+  try {
+    await getRedis().del(adminBruteForceKey(ip))
+  } catch (e) {
+    console.error('[auth-service] Failed to clear admin brute-force state:', e)
   }
 }

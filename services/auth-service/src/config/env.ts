@@ -13,6 +13,10 @@ const EnvSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   GOOGLE_REDIRECT_URI: z.string().url(),
+  FRONTEND_APP_URL: z.string().url().default('http://localhost:3000'),
+  MFA_ENCRYPTION_KEY: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/i, 'Must be 64 hex characters (32 bytes)'),
   BCRYPT_ROUNDS: z.coerce.number().default(12),
   BRUTE_FORCE_MAX_ATTEMPTS: z.coerce.number().default(3),
   BRUTE_FORCE_LOCK_MINUTES: z.coerce.number().default(15),

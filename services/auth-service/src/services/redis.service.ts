@@ -26,6 +26,14 @@ export function bruteForceKey(ip: string): string {
   return `auth:brute:${ip}`
 }
 
+export function adminBruteForceKey(ip: string): string {
+  return `auth:admin:brute:${ip}`
+}
+
+export function oauthStateKey(state: string): string {
+  return `oauth:state:${state}`
+}
+
 export function refreshTokenKey(tokenHash: string): string {
   return `auth:rt:${tokenHash}`
 }

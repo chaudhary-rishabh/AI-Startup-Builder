@@ -4,6 +4,7 @@ import {
   bruteForceKey,
   emailVerifyKey,
   getRedis,
+  oauthStateKey,
   refreshTokenKey,
   sessionKey,
 } from '../../src/services/redis.service.js'
@@ -14,6 +15,7 @@ describe('redis.service', () => {
     expect(refreshTokenKey('deadbeef')).toBe('auth:rt:deadbeef')
     expect(sessionKey('user-9')).toBe('auth:session:user-9')
     expect(emailVerifyKey('tok')).toBe('auth:verify:tok')
+    expect(oauthStateKey('abc')).toBe('oauth:state:abc')
   })
 
   it('getRedis returns singleton', () => {
