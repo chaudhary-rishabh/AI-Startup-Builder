@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 export const UpdateProfileSchema = z.object({
   fullName: z.string().min(2).max(100).optional(),
+  roleType: z.enum(['FOUNDER', 'DESIGNER', 'DEVELOPER', 'OTHER']).optional(),
   bio: z.string().max(500).optional(),
   companyName: z.string().max(200).optional(),
   // Allow empty string to clear the URL

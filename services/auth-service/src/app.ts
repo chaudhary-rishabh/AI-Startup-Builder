@@ -5,6 +5,7 @@ import { errorHandler } from './middleware/errorHandler.js'
 import { requestIdMiddleware } from './middleware/requestId.js'
 import adminRoutes from './routes/admin.routes.js'
 import authRoutes from './routes/auth.routes.js'
+import internalRoutes from './routes/internal.routes.js'
 import mfaRoutes from './routes/mfa.routes.js'
 import oauthRoutes from './routes/oauth.routes.js'
 import sessionsRoutes from './routes/sessions.routes.js'
@@ -18,6 +19,7 @@ export function createApp(): Hono {
   app.route('/auth', mfaRoutes)
   app.route('/auth', sessionsRoutes)
   app.route('/admin', adminRoutes)
+  app.route('/internal', internalRoutes)
   app.onError(errorHandler)
   return app
 }
