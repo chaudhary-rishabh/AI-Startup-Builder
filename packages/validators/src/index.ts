@@ -24,6 +24,7 @@ export {
   UpdateProjectSchema,
   AdvancePhaseSchema,
   SavePhaseDataSchema,
+  InternalPhaseOutputSchema,
   ExportProjectSchema,
   AppendConversationSchema,
   ListProjectsQuerySchema,

@@ -74,6 +74,10 @@ export interface AgentOutput {
 export interface ProjectContext {
   projectId: string
   projectName: string
+  /** Current project phase (1–6) — included for agent routing. */
+  currentPhase: number
+  /** True when context was trimmed to stay under the token budget. */
+  wasCompressed?: boolean
   phase1Output?: Phase1Output
   phase2Output?: Phase2Output
   phase3Output?: Phase3Output

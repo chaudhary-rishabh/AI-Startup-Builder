@@ -16,6 +16,12 @@ export const AdvancePhaseSchema = z.object({
 
 export const SavePhaseDataSchema = z.object({
   data: z.record(z.unknown()),
+  isComplete: z.boolean().optional(),
+})
+
+export const InternalPhaseOutputSchema = z.object({
+  outputData: z.record(z.unknown()),
+  agentType: z.string().min(1),
 })
 
 export const ExportProjectSchema = z.object({
