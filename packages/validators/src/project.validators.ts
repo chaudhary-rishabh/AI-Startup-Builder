@@ -24,6 +24,56 @@ export const InternalPhaseOutputSchema = z.object({
   agentType: z.string().min(1),
 })
 
+export const CanvasUpsertBodySchema = z.object({
+  canvasData: z.array(z.unknown()).optional(),
+  pages: z.array(z.unknown()).optional(),
+  designTokens: z.record(z.unknown()).optional(),
+  viewport: z
+    .object({
+      x: z.number(),
+      y: z.number(),
+      zoom: z.number(),
+    })
+    .optional(),
+})
+
+export const FileContentPutSchema = z.object({
+  content: z.string(),
+})
+
+export const InternalProjectFileBodySchema = z.object({
+  path: z.string().min(1),
+  content: z.string(),
+  language: z.string().optional(),
+  agentType: z.string().optional(),
+})
+
+export const InternalProjectFileBatchSchema = z.object({
+  files: z
+    .array(
+      z.object({
+        path: z.string().min(1),
+        content: z.string(),
+        language: z.string().optional(),
+        agentType: z.string().optional(),
+      }),
+    )
+    .max(100),
+})
+
+export const InternalCanvasPutSchema = z.object({
+  canvasData: z.array(z.unknown()),
+  pages: z.array(z.unknown()).optional(),
+  designTokens: z.record(z.unknown()).optional(),
+  viewport: z
+    .object({
+      x: z.number(),
+      y: z.number(),
+      zoom: z.number(),
+    })
+    .optional(),
+})
+
 export const ExportProjectSchema = z.object({
   format: z.enum(['zip', 'docx', 'pdf']),
   includePhases: z.array(z.number().int().min(1).max(6)).optional(),

@@ -1,8 +1,16 @@
 import { zValidator } from '@hono/zod-validator'
-import { InternalPhaseOutputSchema } from '@repo/validators'
+import {
+  InternalCanvasPutSchema,
+  InternalPhaseOutputSchema,
+  InternalProjectFileBatchSchema,
+  InternalProjectFileBodySchema,
+} from '@repo/validators'
 import { Hono } from 'hono'
 import { z } from 'zod'
 
+import * as canvasQueries from '../db/queries/designCanvas.queries.js'
+import type { CanvasUpsertPatch } from '../db/queries/designCanvas.queries.js'
+import * as fileQueries from '../db/queries/projectFiles.queries.js'
 import * as phaseOutputsQueries from '../db/queries/phaseOutputs.queries.js'
 import * as projectsQueries from '../db/queries/projects.queries.js'
 import { err, ok } from '../lib/response.js'
@@ -58,6 +66,85 @@ routes.get('/projects/:id', async (c) => {
     return err(c, 404, 'PROJECT_NOT_FOUND', 'Project not found')
   }
   return ok(c, { project })
+})
+
+routes.post(
+  '/projects/:id/files',
+  zValidator('json', InternalProjectFileBodySchema),
+  async (c) => {
+    const id = c.req.param('id')
+    const body = c.req.valid('json')
+    const file = await fileQueries.upsertFile({
+      projectId: id,
+      path: body.path,
+      content: body.content,
+      language: body.language ?? null,
+      agentType: body.agentType ?? null,
+      isModified: false,
+    })
+    void projectsQueries.updateLastActive(id)
+    return ok(c, { saved: true, file: { id: file.id, path: file.path } })
+  },
+)
+
+routes.post(
+  '/projects/:id/files/batch',
+  zValidator('json', InternalProjectFileBatchSchema),
+  async (c) => {
+    const id = c.req.param('id')
+    const { files } = c.req.valid('json')
+    const out: { id: string; path: string }[] = []
+    for (const f of files) {
+      const row = await fileQueries.upsertFile({
+        projectId: id,
+        path: f.path,
+        content: f.content,
+        language: f.language ?? null,
+        agentType: f.agentType ?? null,
+        isModified: false,
+      })
+      out.push({ id: row.id, path: row.path })
+    }
+    void projectsQueries.updateLastActive(id)
+    return ok(c, { saved: out.length, files: out })
+  },
+)
+
+routes.get('/projects/:id/canvas', async (c) => {
+  const id = c.req.param('id')
+  const canvas = await canvasQueries.findCanvasByProjectId(id)
+  if (!canvas) {
+    return err(c, 404, 'CANVAS_NOT_FOUND', 'Canvas not found')
+  }
+  return ok(c, {
+    id: canvas.id,
+    projectId: canvas.projectId,
+    canvasData: canvas.canvasData,
+    pages: canvas.pages,
+    designTokens: canvas.designTokens,
+    viewport: canvas.viewport,
+    updatedAt: canvas.updatedAt instanceof Date ? canvas.updatedAt.toISOString() : canvas.updatedAt,
+  })
+})
+
+routes.put('/projects/:id/canvas', zValidator('json', InternalCanvasPutSchema), async (c) => {
+  const id = c.req.param('id')
+  const body = c.req.valid('json')
+  const patch: CanvasUpsertPatch = { canvasData: body.canvasData }
+  if (body.pages !== undefined) patch.pages = body.pages
+  if (body.designTokens !== undefined) patch.designTokens = body.designTokens
+  if (body.viewport !== undefined) patch.viewport = body.viewport
+  const canvas = await canvasQueries.upsertCanvas(id, patch)
+  void projectsQueries.updateLastActive(id)
+  return ok(c, {
+    id: canvas.id,
+    projectId: canvas.projectId,
+    canvasData: canvas.canvasData,
+    pages: canvas.pages,
+    designTokens: canvas.designTokens,
+    viewport: canvas.viewport,
+    updatedAt: canvas.updatedAt instanceof Date ? canvas.updatedAt.toISOString() : canvas.updatedAt,
+  })
 })
 
 export default routes

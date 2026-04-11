@@ -12,6 +12,7 @@ describe('designCanvas.queries', () => {
     select: vi.fn(),
     insert: vi.fn(),
     update: vi.fn(),
+    delete: vi.fn(),
   }
 
   beforeEach(() => {
@@ -19,8 +20,15 @@ describe('designCanvas.queries', () => {
     vi.mocked(dbMod.getDb).mockReturnValue(mockDb as never)
   })
 
-  it('findDesignCanvasByProjectId returns row', async () => {
-    const row = { id: 'c1', projectId: 'p1' } as never
+  it('findCanvasByProjectId returns canvas when found', async () => {
+    const row = {
+      id: 'c1',
+      projectId: 'p1',
+      canvasData: [],
+      pages: [],
+      designTokens: {},
+      viewport: { x: 0, y: 0, zoom: 1 },
+    } as never
     mockDb.select.mockReturnValue({
       from: () => ({
         where: () => ({
@@ -29,34 +37,49 @@ describe('designCanvas.queries', () => {
       }),
     } as never)
 
-    await expect(canvasQueries.findDesignCanvasByProjectId('p1')).resolves.toBe(row)
+    await expect(canvasQueries.findCanvasByProjectId('p1')).resolves.toBe(row)
   })
 
-  it('upsertDesignCanvasForProject updates when exists', async () => {
-    const existing = { id: 'c1', projectId: 'p1' } as never
-    const updated = { id: 'c1', projectId: 'p1', canvasData: [] } as never
+  it('findCanvasByProjectId returns undefined when not found', async () => {
     mockDb.select.mockReturnValue({
       from: () => ({
         where: () => ({
-          limit: () => Promise.resolve([existing]),
-        }),
-      }),
-    } as never)
-    mockDb.update.mockReturnValue({
-      set: () => ({
-        where: () => ({
-          returning: () => Promise.resolve([updated]),
+          limit: () => Promise.resolve([]),
         }),
       }),
     } as never)
 
-    await expect(canvasQueries.upsertDesignCanvasForProject('p1', { canvasData: [] })).resolves.toBe(
-      updated,
+    await expect(canvasQueries.findCanvasByProjectId('p1')).resolves.toBeUndefined()
+  })
+
+  it('createCanvas creates with empty defaults', async () => {
+    const inserted = {
+      id: 'c2',
+      projectId: 'p1',
+      canvasData: [],
+      pages: [],
+      designTokens: {},
+      viewport: { x: 0, y: 0, zoom: 1 },
+    } as never
+    const valuesSpy = vi.fn().mockReturnValue({
+      returning: () => Promise.resolve([inserted]),
+    })
+    mockDb.insert.mockReturnValue({ values: valuesSpy } as never)
+
+    await expect(canvasQueries.createCanvas('p1')).resolves.toBe(inserted)
+    expect(valuesSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: 'p1',
+        canvasData: [],
+        pages: [],
+        designTokens: {},
+        viewport: { x: 0, y: 0, zoom: 1 },
+      }),
     )
   })
 
-  it('upsertDesignCanvasForProject inserts when missing', async () => {
-    const inserted = { id: 'c2', projectId: 'p1' } as never
+  it('upsertCanvas creates when not exists', async () => {
+    const inserted = { id: 'c2', projectId: 'p1', canvasData: [{ a: 1 }] } as never
     mockDb.select.mockReturnValue({
       from: () => ({
         where: () => ({
@@ -70,6 +93,73 @@ describe('designCanvas.queries', () => {
       }),
     } as never)
 
-    await expect(canvasQueries.upsertDesignCanvasForProject('p1', {})).resolves.toBe(inserted)
+    await expect(
+      canvasQueries.upsertCanvas('p1', { canvasData: [{ a: 1 }] }),
+    ).resolves.toBe(inserted)
+  })
+
+  it('upsertCanvas updates only provided fields (keeps existing for omitted)', async () => {
+    const existing = {
+      id: 'c1',
+      projectId: 'p1',
+      canvasData: [{ old: true }],
+      pages: [{ p: 1 }],
+      designTokens: { color: 'blue' },
+      viewport: { x: 1, y: 2, zoom: 2 },
+    } as never
+    const updated = {
+      ...existing,
+      canvasData: [{ new: true }],
+      pages: [{ p: 1 }],
+      designTokens: { color: 'blue' },
+      viewport: { x: 1, y: 2, zoom: 2 },
+    } as never
+
+    mockDb.select.mockReturnValue({
+      from: () => ({
+        where: () => ({
+          limit: () => Promise.resolve([existing]),
+        }),
+      }),
+    } as never)
+
+    const setSpy = vi.fn().mockReturnValue({
+      where: () => ({
+        returning: () => Promise.resolve([updated]),
+      }),
+    })
+    mockDb.update.mockReturnValue({ set: setSpy } as never)
+
+    await canvasQueries.upsertCanvas('p1', { canvasData: [{ new: true }] })
+
+    expect(setSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        canvasData: [{ new: true }],
+        pages: [{ p: 1 }],
+        designTokens: { color: 'blue' },
+        viewport: { x: 1, y: 2, zoom: 2 },
+      }),
+    )
+  })
+
+  it('deleteCanvas removes row', async () => {
+    const whereSpy = vi.fn().mockResolvedValue(undefined)
+    mockDb.delete.mockReturnValue({ where: whereSpy } as never)
+
+    await expect(canvasQueries.deleteCanvas('p1')).resolves.toBeUndefined()
+    expect(mockDb.delete).toHaveBeenCalled()
+    expect(whereSpy).toHaveBeenCalled()
+  })
+
+  it('findDesignCanvasByProjectId aliases findCanvasByProjectId', async () => {
+    mockDb.select.mockReturnValue({
+      from: () => ({
+        where: () => ({
+          limit: () => Promise.resolve([]),
+        }),
+      }),
+    } as never)
+
+    await expect(canvasQueries.findDesignCanvasByProjectId('p1')).resolves.toBeUndefined()
   })
 })
