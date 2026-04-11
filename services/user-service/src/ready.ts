@@ -1,18 +1,31 @@
-import { sql } from 'drizzle-orm'
 import type { Context } from 'hono'
 
+import { userProfiles } from './db/schema.js'
 import { getDb } from './lib/db.js'
 import { getRedis } from './services/redis.service.js'
 
 export async function readyHandler(c: Context): Promise<Response> {
   try {
-    await getDb().execute(sql`select 1`)
+    await getDb().select().from(userProfiles).limit(1)
+  } catch {
+    return c.json({ status: 'unhealthy', db: 'unreachable' }, 503)
+  }
+
+  try {
     const pong = await getRedis().ping()
     if (pong !== 'PONG') {
-      return c.json({ status: 'not_ready', service: 'user-service', redis: false }, 503)
+      return c.json({ status: 'unhealthy', redis: 'unreachable' }, 503)
     }
-    return c.json({ status: 'ready', service: 'user-service' })
   } catch {
-    return c.json({ status: 'not_ready', service: 'user-service' }, 503)
+    return c.json({ status: 'unhealthy', redis: 'unreachable' }, 503)
   }
+
+  const timestamp = new Date().toISOString()
+  return c.json({
+    status: 'healthy',
+    service: 'user-service',
+    db: 'connected',
+    redis: 'connected',
+    timestamp,
+  })
 }

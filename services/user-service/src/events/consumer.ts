@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { logger } from '../lib/logger.js'
 import { getRedis } from '../services/redis.service.js'
+import { handleUserDeleted } from './handlers/userDeleted.handler.js'
 import { handleUserRegistered } from './handlers/userRegistered.handler.js'
 
 const STREAM = 'platform:events'
@@ -45,6 +46,9 @@ export async function routeEvent(type: string, payload: unknown): Promise<void> 
   switch (type) {
     case 'user.registered':
       await handleUserRegistered(payload)
+      return
+    case 'user.deleted':
+      await handleUserDeleted(payload)
       return
     case 'subscription.upgraded':
       await handleSubscriptionUpgraded(payload)

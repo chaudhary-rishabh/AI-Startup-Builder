@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const handleUserRegistered = vi.fn().mockResolvedValue(undefined)
+const handleUserDeleted = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('../../src/events/handlers/userRegistered.handler.js', () => ({
   handleUserRegistered: (...a: unknown[]) => handleUserRegistered(...a),
+}))
+
+vi.mock('../../src/events/handlers/userDeleted.handler.js', () => ({
+  handleUserDeleted: (...a: unknown[]) => handleUserDeleted(...a),
 }))
 
 vi.mock('../../src/lib/logger.js', () => ({
@@ -25,11 +30,17 @@ const consumer = await import('../../src/events/consumer.js')
 describe('events/consumer', () => {
   beforeEach(() => {
     handleUserRegistered.mockClear()
+    handleUserDeleted.mockClear()
   })
 
   it('routeEvent calls handleUserRegistered for user.registered', async () => {
     await consumer.routeEvent('user.registered', { x: 1 })
     expect(handleUserRegistered).toHaveBeenCalledWith({ x: 1 })
+  })
+
+  it('routeEvent calls handleUserDeleted for user.deleted', async () => {
+    await consumer.routeEvent('user.deleted', { userId: '550e8400-e29b-41d4-a716-446655440000' })
+    expect(handleUserDeleted).toHaveBeenCalled()
   })
 
   it('routeEvent ignores unknown types', async () => {

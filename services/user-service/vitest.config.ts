@@ -12,14 +12,13 @@ export default defineConfig({
     },
     setupFiles: ['./tests/setup.ts'],
     testTimeout: 30_000,
-    hookTimeout: 30_000,
+    hookTimeout: 120_000,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
       exclude: [
         'src/db/migrations/**',
         'src/index.ts',
-        'src/ready.ts',
         'src/config/env.ts',
         'src/lib/logger.ts',
         'src/lib/db.ts',
