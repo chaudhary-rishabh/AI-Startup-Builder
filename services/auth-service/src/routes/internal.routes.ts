@@ -15,6 +15,10 @@ const PatchInternalUserBodySchema = z.object({
   fullName: z.string().min(2).max(100).optional(),
 })
 
+const UpdateAvatarBodySchema = z.object({
+  avatarUrl: z.union([z.string().url(), z.null()]),
+})
+
 const internal = new Hono()
 
 internal.get('/users/:userId', async (c) => {
@@ -90,5 +94,22 @@ internal.post('/users/:userId/complete-onboarding', async (c) => {
   await usersQueries.updateUser(userId, { onboardingCompleted: true })
   return ok(c, { updated: true })
 })
+
+internal.post(
+  '/users/:userId/update-avatar',
+  zValidator('json', UpdateAvatarBodySchema, (r) => {
+    if (!r.success) throw r.error
+  }),
+  async (c) => {
+    const userId = c.req.param('userId')
+    const { avatarUrl } = c.req.valid('json')
+    const user = await usersQueries.findUserById(userId)
+    if (!user) {
+      return err(c, 404, 'NOT_FOUND', 'User not found')
+    }
+    await usersQueries.updateUser(userId, { avatarUrl })
+    return ok(c, { updated: true })
+  },
+)
 
 export default internal

@@ -78,4 +78,22 @@ describe('authClient.service', () => {
     await mod.patchAuthUserFullName('u1', 'New Name')
     expect(fetchSpy).toHaveBeenCalled()
   })
+
+  it('updateAuthUserAvatar POSTs to internal update-avatar', async () => {
+    fetchSpy.mockResolvedValueOnce(
+      new Response(JSON.stringify({ success: true, data: { updated: true } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    const mod = await import('../../src/services/authClient.service.js')
+    await mod.updateAuthUserAvatar('u1', 'https://cdn.example/a.png', 'rid')
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining('/internal/users/u1/update-avatar'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ avatarUrl: 'https://cdn.example/a.png' }),
+      }),
+    )
+  })
 })

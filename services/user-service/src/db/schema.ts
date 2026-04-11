@@ -75,9 +75,32 @@ export const userIntegrations = usersSchema.table(
   }),
 )
 
+export const apiKeys = usersSchema.table(
+  'api_keys',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull(),
+    keyHash: text('key_hash').notNull(),
+    prefix: text('prefix').notNull(),
+    name: text('name').notNull(),
+    scopes: jsonb('scopes').notNull().default(sql`'[]'::jsonb`),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    ...timestampColumns,
+  },
+  (t) => ({
+    userIdx: index('api_keys_user_idx').on(t.userId),
+    keyHashIdx: uniqueIndex('api_keys_hash_idx').on(t.keyHash),
+    revokedIdx: index('api_keys_revoked_idx').on(t.revokedAt),
+  }),
+)
+
 export type UserProfile = typeof userProfiles.$inferSelect
 export type NewUserProfile = typeof userProfiles.$inferInsert
 export type OnboardingState = typeof onboardingState.$inferSelect
 export type NewOnboardingState = typeof onboardingState.$inferInsert
 export type UserIntegration = typeof userIntegrations.$inferSelect
 export type NewUserIntegration = typeof userIntegrations.$inferInsert
+export type ApiKey = typeof apiKeys.$inferSelect
+export type NewApiKey = typeof apiKeys.$inferInsert

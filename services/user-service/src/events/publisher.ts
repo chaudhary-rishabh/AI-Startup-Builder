@@ -1,4 +1,5 @@
 import type {
+  ApiKeyRevokedEvent,
   UserApiKeyCreatedEvent,
   UserDeletedEvent,
   UserOnboardingCompletedEvent,
@@ -51,6 +52,15 @@ export async function publishUserApiKeyCreated(
 ): Promise<void> {
   const payload: UserApiKeyCreatedEvent = { userId, keyId, scopes }
   await publishEvent('user.api_key_created', payload as unknown as Record<string, unknown>)
+}
+
+export async function publishUserApiKeyRevoked(
+  userId: string,
+  keyId: string,
+  revokedAt: string,
+): Promise<void> {
+  const payload: ApiKeyRevokedEvent = { userId, keyId, revokedAt }
+  await publishEvent('user.api_key_revoked', payload as unknown as Record<string, unknown>)
 }
 
 export async function publishUserDeleted(userId: string): Promise<void> {

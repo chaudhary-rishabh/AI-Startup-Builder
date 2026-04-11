@@ -16,6 +16,12 @@ Object.assign(process.env, {
   REDIS_URL: process.env['REDIS_URL'] ?? 'redis://127.0.0.1:6379',
   JWT_PUBLIC_KEY_BASE64: Buffer.from(publicKey).toString('base64'),
   JWT_PRIVATE_KEY_TEST_BASE64: Buffer.from(privateKey).toString('base64'),
+  API_KEY_HMAC_SECRET:
+    process.env['API_KEY_HMAC_SECRET'] ??
+    '0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab',
+  INTEGRATION_ENCRYPTION_KEY:
+    process.env['INTEGRATION_ENCRYPTION_KEY'] ??
+    '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
   AWS_REGION: 'us-east-1',
   AWS_S3_BUCKET_UPLOADS: process.env['AWS_S3_BUCKET_UPLOADS'] ?? 'test-uploads-bucket',
   AUTH_SERVICE_URL: process.env['AUTH_SERVICE_URL'] ?? 'http://localhost:4001',

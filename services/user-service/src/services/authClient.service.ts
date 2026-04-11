@@ -82,3 +82,18 @@ export async function patchAuthUserFullName(
     throw new Error(`auth-service patch user failed: ${res.status}`)
   }
 }
+
+export async function updateAuthUserAvatar(
+  userId: string,
+  avatarUrl: string | null,
+  requestId?: string,
+): Promise<void> {
+  const res = await fetch(`${env.AUTH_SERVICE_URL}/internal/users/${userId}/update-avatar`, {
+    method: 'POST',
+    headers: headers(requestId),
+    body: JSON.stringify({ avatarUrl }),
+  })
+  if (!res.ok) {
+    throw new Error(`auth-service update-avatar failed: ${res.status}`)
+  }
+}

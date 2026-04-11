@@ -32,4 +32,16 @@ describe('events/publisher', () => {
     const args = xadd.mock.calls[0] as unknown[]
     expect(args[args.indexOf('type') + 1]).toBe('user.onboarding_completed')
   })
+
+  it('publishUserApiKeyCreated writes user.api_key_created', async () => {
+    await publisher.publishUserApiKeyCreated('u1', 'kid', ['read'])
+    const args = xadd.mock.calls[0] as unknown[]
+    expect(args[args.indexOf('type') + 1]).toBe('user.api_key_created')
+  })
+
+  it('publishUserApiKeyRevoked writes user.api_key_revoked', async () => {
+    await publisher.publishUserApiKeyRevoked('u1', 'kid', new Date().toISOString())
+    const args = xadd.mock.calls[0] as unknown[]
+    expect(args[args.indexOf('type') + 1]).toBe('user.api_key_revoked')
+  })
 })

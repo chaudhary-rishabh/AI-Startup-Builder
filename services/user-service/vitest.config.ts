@@ -23,7 +23,6 @@ export default defineConfig({
         'src/config/env.ts',
         'src/lib/logger.ts',
         'src/lib/db.ts',
-        'src/services/s3.service.ts',
         'src/services/redis.service.ts',
         'src/events/consumer.ts',
       ],

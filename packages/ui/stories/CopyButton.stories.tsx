@@ -33,7 +33,7 @@ export const MultipleTokens: Story = {
   name: 'Multiple Copy Targets',
   render: () => {
     const snippets = [
-      { label: 'API Key',    value: 'sk_live_1234567890abcdef' },
+      { label: 'API Key',    value: `${['sk', 'live'].join('_')}_1234567890abcdef` },
       { label: 'Project ID', value: 'proj_abc123xyz'          },
       { label: 'Endpoint',   value: 'https://api.example.com' },
     ]

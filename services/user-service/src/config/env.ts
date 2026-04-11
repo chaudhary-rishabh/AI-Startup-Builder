@@ -7,6 +7,11 @@ const EnvSchema = z.object({
   DATABASE_READ_REPLICA_URL: z.string().url().optional(),
   REDIS_URL: z.string().url(),
   JWT_PUBLIC_KEY_BASE64: z.string().min(1),
+  API_KEY_HMAC_SECRET: z.string().min(32, 'Must be at least 32 chars'),
+  INTEGRATION_ENCRYPTION_KEY: z
+    .string()
+    .transform((s) => s.toLowerCase())
+    .pipe(z.string().regex(/^[0-9a-f]{64}$/, 'Must be 64 hex chars')),
   AWS_REGION: z.string().default('us-east-1'),
   AWS_S3_BUCKET_UPLOADS: z.string().min(1),
   AUTH_SERVICE_URL: z.string().url().default('http://localhost:4001'),
