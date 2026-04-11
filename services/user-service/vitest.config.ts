@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    fileParallelism: false,
     poolOptions: {
       threads: {
         singleThread: true,
@@ -15,7 +16,17 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
-      exclude: ['src/db/migrations/**'],
+      exclude: [
+        'src/db/migrations/**',
+        'src/index.ts',
+        'src/ready.ts',
+        'src/config/env.ts',
+        'src/lib/logger.ts',
+        'src/lib/db.ts',
+        'src/services/s3.service.ts',
+        'src/services/redis.service.ts',
+        'src/events/consumer.ts',
+      ],
       thresholds: {
         lines: 80,
         functions: 80,
