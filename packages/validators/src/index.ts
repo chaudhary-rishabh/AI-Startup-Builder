@@ -26,6 +26,11 @@ export {
   SavePhaseDataSchema,
   ExportProjectSchema,
   AppendConversationSchema,
+  ListProjectsQuerySchema,
+  AdminProjectsQuerySchema,
+  ProjectSearchQuerySchema,
+  ConversationListQuerySchema,
+  DuplicateProjectBodySchema,
 } from './project.validators.js'
 export type {
   CreateProjectInput,
