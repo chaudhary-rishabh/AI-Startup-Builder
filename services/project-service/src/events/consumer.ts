@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { savePhaseOutput } from '../db/queries/phaseOutputs.queries.js'
 import { updateLastActive } from '../db/queries/projects.queries.js'
 import { getRedis } from '../services/redis.service.js'
+import { handleUserDeleted } from './handlers/userDeleted.handler.js'
 
 const STREAM = 'platform:events'
 const GROUP = 'project-service-consumers'
@@ -53,6 +54,9 @@ export async function routeEvent(type: string, payload: unknown): Promise<void> 
   switch (type) {
     case 'agent.run_completed':
       await handleAgentRunCompleted(payload)
+      return
+    case 'user.deleted':
+      await handleUserDeleted(payload)
       return
     default:
       return

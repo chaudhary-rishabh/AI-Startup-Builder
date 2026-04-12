@@ -4,13 +4,6 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    fileParallelism: false,
-    poolOptions: {
-      threads: {
-        singleThread: true,
-      },
-    },
-    setupFiles: ['./tests/setup.ts'],
     testTimeout: 30_000,
     hookTimeout: 120_000,
     coverage: {

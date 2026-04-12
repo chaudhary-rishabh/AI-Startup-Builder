@@ -36,6 +36,8 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@testcontainers/postgresql": "^10.16.0",
+    "@testcontainers/redis": "^10.16.0",
     "@types/archiver": "^6.0.0",
     "@types/node": "^22.0.0",
     "@types/pdfkit": "^0.13.0",
