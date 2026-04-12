@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import {
   boolean,
   index,
@@ -149,6 +150,42 @@ export const conversationMessages = projectsSchema.table(
   }),
 )
 
+export const projectExports = projectsSchema.table(
+  'project_exports',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    jobId: text('job_id').notNull(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull(),
+    format: text('format', {
+      enum: ['zip', 'docx', 'pdf'],
+    }).notNull(),
+    includePhases: jsonb('include_phases')
+      .$type<number[]>()
+      .notNull()
+      .default(sql`'[1,2,3,4,5,6]'::jsonb`),
+    status: text('status', {
+      enum: ['queued', 'processing', 'complete', 'failed'],
+    })
+      .notNull()
+      .default('queued'),
+    s3Key: text('s3_key'),
+    downloadUrl: text('download_url'),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    fileSizeBytes: integer('file_size_bytes'),
+    errorMessage: text('error_message'),
+    progress: integer('progress').notNull().default(0),
+    ...timestampColumns,
+  },
+  (t) => ({
+    jobIdIdx: uniqueIndex('exports_job_id_idx').on(t.jobId),
+    projectIdx: index('exports_project_idx').on(t.projectId),
+    userIdx: index('exports_user_idx').on(t.userId, t.createdAt),
+  }),
+)
+
 export type Project = typeof projects.$inferSelect
 export type NewProject = typeof projects.$inferInsert
 export type PhaseOutput = typeof phaseOutputs.$inferSelect
@@ -159,3 +196,5 @@ export type DesignCanvas = typeof designCanvas.$inferSelect
 export type NewDesignCanvas = typeof designCanvas.$inferInsert
 export type ConversationMessage = typeof conversationMessages.$inferSelect
 export type NewConversationMessage = typeof conversationMessages.$inferInsert
+export type ProjectExport = typeof projectExports.$inferSelect
+export type NewProjectExport = typeof projectExports.$inferInsert
