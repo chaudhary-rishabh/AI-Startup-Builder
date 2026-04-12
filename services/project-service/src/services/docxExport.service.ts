@@ -1,17 +1,14 @@
-import type {
-  Phase1Output,
-  Phase2Output,
-  Phase3Output,
-  Phase4Output,
-  Phase5Output,
-} from '@repo/types'
 import {
   AlignmentType,
   Document,
   HeadingLevel,
   Packer,
   Paragraph,
+  Table,
+  TableCell,
+  TableRow,
   TextRun,
+  WidthType,
 } from 'docx'
 
 import * as canvasQueries from '../db/queries/designCanvas.queries.js'
@@ -21,121 +18,132 @@ import * as projectsQueries from '../db/queries/projects.queries.js'
 
 import type { PhaseOutput } from '../db/schema.js'
 
-type DocBlock = Paragraph
-
-function pt(text: string, heading?: (typeof HeadingLevel)[keyof typeof HeadingLevel]): Paragraph {
-  return new Paragraph({ text, heading })
+function asRecord(v: unknown): Record<string, unknown> {
+  return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {}
 }
 
-function phaseOutput<T>(row: PhaseOutput | undefined): T | undefined {
-  return row?.outputData as T | undefined
+function textPara(s: string): Paragraph {
+  return new Paragraph({ children: [new TextRun(s)] })
 }
 
-function addPhase1Section(children: DocBlock[], o: Phase1Output | undefined): void {
-  children.push(pt('Phase 1 — Discovery', HeadingLevel.HEADING_1))
-  if (!o) {
-    children.push(pt('No Phase 1 output available.'))
-    return
-  }
-  children.push(pt(`Problem: ${o.problem}`))
-  children.push(pt(`Solution: ${o.solution}`))
-  children.push(pt(`ICP: ${o.icp}`))
-  children.push(pt(`Market gap: ${o.marketGap}`))
-  children.push(pt(`Demand score: ${o.demandScore}`))
-  children.push(pt(`Verdict: ${o.verdict}`))
-  if (o.competitors?.length) {
-    children.push(pt('Competitors', HeadingLevel.HEADING_2))
-    for (const c of o.competitors) {
-      children.push(pt(`${c.name} — ${c.features} | ${c.pricing} | weakness: ${c.weakness}`))
-    }
-  }
-  if (o.risks?.length) {
-    children.push(pt('Risk analysis', HeadingLevel.HEADING_2))
-    for (const r of o.risks) {
-      children.push(pt(`(${r.severity}) ${r.description}`))
-    }
-  }
+function heading(
+  text: string,
+  level: (typeof HeadingLevel)[keyof typeof HeadingLevel],
+): Paragraph {
+  return new Paragraph({ text, heading: level } as never)
 }
 
-function addPhase2Section(children: DocBlock[], o: Phase2Output | undefined): void {
-  children.push(pt('Phase 2 — Plan', HeadingLevel.HEADING_1))
-  if (!o) {
-    children.push(pt('No Phase 2 output available.'))
-    return
+function buildPhase1Blocks(data: Record<string, unknown>): (Paragraph | Table)[] {
+  const blocks: (Paragraph | Table)[] = []
+  const keys = [
+    'problemStatement',
+    'solution',
+    'icp',
+    'marketGap',
+    'demandScore',
+    'riskAnalysis',
+    'verdict',
+  ]
+  for (const k of keys) {
+    const v = data[k]
+    if (v === undefined || v === null) continue
+    blocks.push(heading(k.replace(/([A-Z])/g, ' $1').trim(), HeadingLevel.HEADING_3))
+    blocks.push(textPara(typeof v === 'string' ? v : JSON.stringify(v, null, 2)))
   }
-  children.push(
-    pt(
-      `Tech stack — Frontend: ${o.frontendStack}; Backend: ${o.backendStack}; Database: ${o.dbChoice}`,
-    ),
-  )
-  if (o.features?.length) {
-    children.push(pt('Features (MoSCoW)', HeadingLevel.HEADING_2))
-    for (const f of o.features) {
-      children.push(pt(`${f.priority.toUpperCase()}: ${f.name} — ${f.description}`))
-    }
-  }
-  if (o.userStories?.length) {
-    children.push(pt('User stories', HeadingLevel.HEADING_2))
-    for (const us of o.userStories) {
-      children.push(
-        pt(
-          `As ${us.role}, I want ${us.want} so that ${us.soThat}. Acceptance: ${us.acceptance?.join('; ') ?? ''}`,
-        ),
+  const competitors = data['competitors']
+  if (Array.isArray(competitors) && competitors.length > 0) {
+    blocks.push(heading('Competitors', HeadingLevel.HEADING_3))
+    const rows: TableRow[] = [
+      new TableRow({
+        children: [
+          new TableCell({ children: [new Paragraph('Name')] }),
+          new TableCell({ children: [new Paragraph('Notes')] }),
+        ],
+      }),
+    ]
+    for (const c of competitors.slice(0, 15)) {
+      const o = asRecord(c)
+      rows.push(
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph(String(o['name'] ?? '—'))],
+            }),
+            new TableCell({
+              children: [new Paragraph(JSON.stringify(c).slice(0, 200))],
+            }),
+          ],
+        }),
       )
     }
+    blocks.push(
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows,
+      }),
+    )
   }
-  children.push(pt('API structure', HeadingLevel.HEADING_2))
-  children.push(pt('See phase-2 JSON in ZIP export for full API details.'))
+  return blocks
 }
 
-function addPhase3Section(
-  children: DocBlock[],
-  o: Phase3Output | undefined,
-  canvasPages: unknown,
-  canvasDataLen: number,
-): void {
-  children.push(pt('Phase 3 — Design', HeadingLevel.HEADING_1))
-  const pages = o?.pages ?? (Array.isArray(canvasPages) ? canvasPages : [])
-  const names = Array.isArray(pages)
-    ? pages.map((x: { name?: string }) => (typeof x?.name === 'string' ? x.name : 'Untitled'))
-    : []
-  const elCount = Array.isArray(o?.canvasData) ? o.canvasData.length : canvasDataLen
-  children.push(pt(`Wireframe pages: ${names.length ? names.join(', ') : 'None listed'}`))
-  children.push(pt(`Canvas element count: ${elCount}`))
+function phase2Blocks(data: Record<string, unknown>): (Paragraph | Table)[] {
+  const blocks: (Paragraph | Table)[] = []
+  const features = data['features']
+  if (Array.isArray(features) && features.length > 0) {
+    blocks.push(heading('Features (MoSCoW)', HeadingLevel.HEADING_3))
+    const rows: TableRow[] = [
+      new TableRow({
+        children: [
+          new TableCell({ children: [new Paragraph('Feature')] }),
+          new TableCell({ children: [new Paragraph('Priority')] }),
+        ],
+      }),
+    ]
+    for (const f of features.slice(0, 40)) {
+      const o = asRecord(f)
+      rows.push(
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [new Paragraph(String(o['name'] ?? JSON.stringify(f)))],
+            }),
+            new TableCell({
+              children: [
+                new Paragraph(String(o['priority'] ?? o['moscow'] ?? '—')),
+              ],
+            }),
+          ],
+        }),
+      )
+    }
+    blocks.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }))
+  }
+  for (const label of ['userStories', 'techStack', 'apiStructure', 'api_structure']) {
+    const v = data[label]
+    if (v === undefined) continue
+    blocks.push(heading(label.replace(/_/g, ' '), HeadingLevel.HEADING_3))
+    blocks.push(textPara(typeof v === 'string' ? v : JSON.stringify(v, null, 2)))
+  }
+  return blocks
 }
 
-function addPhase4Section(children: DocBlock[], o: Phase4Output | undefined, paths: string[]): void {
-  children.push(pt('Phase 4 — Build', HeadingLevel.HEADING_1))
-  children.push(pt('File tree (paths only)', HeadingLevel.HEADING_2))
-  const list = o?.files?.map((f) => f.path) ?? paths
-  for (const path of list) {
-    children.push(pt(path))
+function phaseBlocks(
+  phase: number,
+  output: PhaseOutput | undefined,
+  extras: (Paragraph | Table)[],
+): (Paragraph | Table)[] {
+  const blocks: (Paragraph | Table)[] = [heading(`Phase ${phase}`, HeadingLevel.HEADING_2)]
+  if (!output) {
+    blocks.push(textPara('No output recorded for this phase.'))
+    blocks.push(...extras)
+    return blocks
   }
-}
-
-function addPhase5Section(children: DocBlock[], o: Phase5Output | undefined): void {
-  children.push(pt('Phase 5 — Deploy', HeadingLevel.HEADING_1))
-  if (!o) {
-    children.push(pt('No Phase 5 output available.'))
-    return
-  }
-  children.push(pt(`Test summary: ${o.testFiles?.length ?? 0} test file(s).`))
-  const yaml =
-    typeof o.cicdYaml === 'string' && o.cicdYaml.length > 2000
-      ? `${o.cicdYaml.slice(0, 2000)}…`
-      : String(o.cicdYaml ?? '')
-  children.push(pt('CI/CD pipeline description', HeadingLevel.HEADING_2))
-  children.push(pt(yaml || '(none)'))
-}
-
-function addPhase6Section(children: DocBlock[], raw: Record<string, unknown> | undefined): void {
-  children.push(pt('Phase 6 — Growth', HeadingLevel.HEADING_1))
-  if (!raw || Object.keys(raw).length === 0) {
-    children.push(pt('No Phase 6 output available.'))
-    return
-  }
-  children.push(pt('KPI recommendations & growth strategy summary', HeadingLevel.HEADING_2))
-  children.push(pt(JSON.stringify(raw, null, 2)))
+  const data = asRecord(output.outputData)
+  if (phase === 1) blocks.push(...buildPhase1Blocks(data))
+  else if (phase === 2) blocks.push(...phase2Blocks(data))
+  else blocks.push(textPara(JSON.stringify(output.outputData, null, 2)))
+  blocks.push(...extras)
+  return blocks
 }
 
 export async function generateDocx(projectId: string, includePhases: number[]): Promise<Buffer> {
@@ -143,71 +151,73 @@ export async function generateDocx(projectId: string, includePhases: number[]): 
   if (!project) throw new Error('Project not found')
 
   const allOutputs = await phaseOutputsQueries.findAllPhaseOutputs(projectId)
-  const byPhase = new Map<number, PhaseOutput>()
-  for (const o of allOutputs) {
-    if (includePhases.includes(o.phase)) byPhase.set(o.phase, o)
-  }
-
+  const byPhase = new Map(allOutputs.map((o) => [o.phase, o]))
   const canvas = await canvasQueries.findCanvasByProjectId(projectId)
-  const canvasPages = canvas?.pages ?? []
-  const canvasDataLen = Array.isArray(canvas?.canvasData) ? canvas.canvasData.length : 0
+  const files = await projectFilesQueries.findFilesByProject(projectId)
 
-  const fileRows = await projectFilesQueries.findFilesByProject(projectId)
-  const filePaths = fileRows.map((f) => f.path)
-
-  const children: DocBlock[] = []
-
-  children.push(
+  const children: (Paragraph | Table)[] = [
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      heading: HeadingLevel.TITLE,
       children: [
-        new TextRun({ text: `${project.emoji} ${project.name}`, bold: true, size: 48 }),
+        new TextRun({ text: `${project.name} ${project.emoji}`, bold: true, size: 56 }),
       ],
-    }),
-  )
-  children.push(
+    } as never),
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      children: [new TextRun(`Generated ${new Date().toISOString()}`)],
-    }),
-  )
-  children.push(pt('Table of contents', HeadingLevel.HEADING_1))
-  children.push(pt('Phases included follow as headings below.'))
+      children: [new TextRun(`Generated ${new Date().toISOString().slice(0, 10)}`)],
+    } as never),
+    heading('Table of contents', HeadingLevel.HEADING_1),
+    textPara('Cover, then phases in order.'),
+  ]
 
-  if (includePhases.includes(1)) {
-    addPhase1Section(children, phaseOutput<Phase1Output>(byPhase.get(1)))
-  }
-  if (includePhases.includes(2)) {
-    addPhase2Section(children, phaseOutput<Phase2Output>(byPhase.get(2)))
-  }
-  if (includePhases.includes(3)) {
-    addPhase3Section(
-      children,
-      phaseOutput<Phase3Output>(byPhase.get(3)),
-      canvasPages,
-      canvasDataLen,
-    )
-  }
-  if (includePhases.includes(4)) {
-    addPhase4Section(children, phaseOutput<Phase4Output>(byPhase.get(4)), filePaths)
-  }
-  if (includePhases.includes(5)) {
-    addPhase5Section(children, phaseOutput<Phase5Output>(byPhase.get(5)))
-  }
-  if (includePhases.includes(6)) {
-    const row = byPhase.get(6)
-    addPhase6Section(
-      children,
-      row?.outputData && typeof row.outputData === 'object'
-        ? (row.outputData as Record<string, unknown>)
-        : undefined,
-    )
+  const sortedPhases = [...includePhases].sort((a, b) => a - b)
+
+  for (const p of sortedPhases) {
+    const out = byPhase.get(p)
+    if (p === 3) {
+      const pages = (canvas?.pages as unknown[] | undefined) ?? []
+      const canvasData = (canvas?.canvasData as unknown[] | undefined) ?? []
+      const extra: Paragraph[] = [
+        heading('Wireframes & canvas', HeadingLevel.HEADING_3),
+        textPara(`Canvas pages: ${pages.length}. Elements (approx): ${canvasData.length}.`),
+      ]
+      children.push(...phaseBlocks(p, out, extra))
+      continue
+    }
+    if (p === 4) {
+      const extra: Paragraph[] = [
+        heading('Generated files (paths only)', HeadingLevel.HEADING_3),
+        textPara(files.map((f) => f.path).join('\n') || 'No files.'),
+      ]
+      children.push(...phaseBlocks(p, out, extra))
+      continue
+    }
+    if (p === 5) {
+      const data = asRecord(out?.outputData)
+      const body =
+        typeof data['testSummary'] === 'string'
+          ? (data['testSummary'] as string)
+          : JSON.stringify(data).slice(0, 4000)
+      const extra: Paragraph[] = [heading('Tests & CI/CD', HeadingLevel.HEADING_3), textPara(body)]
+      children.push(...phaseBlocks(p, out, extra))
+      continue
+    }
+    if (p === 6) {
+      const data = asRecord(out?.outputData)
+      const body =
+        typeof data['kpiRecommendations'] === 'string'
+          ? (data['kpiRecommendations'] as string)
+          : JSON.stringify(data).slice(0, 4000)
+      const extra: Paragraph[] = [heading('Growth & KPIs', HeadingLevel.HEADING_3), textPara(body)]
+      children.push(...phaseBlocks(p, out, extra))
+      continue
+    }
+    children.push(...phaseBlocks(p, out, []))
   }
 
   const doc = new Document({
     sections: [{ children }],
   })
 
-  return Packer.toBuffer(doc)
+  return Buffer.from(await Packer.toBuffer(doc))
 }

@@ -8,6 +8,13 @@
       "when": 1775897438584,
       "tag": "0000_new_kitty_pryde",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1775960637442,
+      "tag": "0001_mushy_arclight",
+      "breakpoints": true
     }
   ]
 }

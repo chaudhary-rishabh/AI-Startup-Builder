@@ -23,6 +23,8 @@ export default defineConfig({
         'src/lib/db.ts',
         'src/services/redis.service.ts',
         'src/events/consumer.ts',
+        'src/queues/export.queue.ts',
+        'src/types/**',
       ],
       thresholds: {
         lines: 80,

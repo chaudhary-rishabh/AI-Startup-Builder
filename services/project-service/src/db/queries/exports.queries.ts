@@ -26,7 +26,7 @@ export async function findExportByJobId(
 }
 
 export type ExportStatusUpdate = {
-  status: 'processing' | 'complete' | 'failed'
+  status?: 'processing' | 'complete' | 'failed'
   progress?: number
   s3Key?: string
   downloadUrl?: string
@@ -42,14 +42,15 @@ export async function updateExportStatus(
   const db = getDb()
   const set: {
     updatedAt: Date
-    status: ExportStatusUpdate['status']
+    status?: 'processing' | 'complete' | 'failed'
     progress?: number
     s3Key?: string | null
     downloadUrl?: string | null
     expiresAt?: Date | null
     fileSizeBytes?: number | null
     errorMessage?: string | null
-  } = { updatedAt: new Date(), status: data.status }
+  } = { updatedAt: new Date() }
+  if (data.status !== undefined) set.status = data.status
   if (data.progress !== undefined) set.progress = data.progress
   if (data.s3Key !== undefined) set.s3Key = data.s3Key
   if (data.downloadUrl !== undefined) set.downloadUrl = data.downloadUrl
