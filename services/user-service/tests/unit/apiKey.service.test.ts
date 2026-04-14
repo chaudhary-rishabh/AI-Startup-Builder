@@ -47,12 +47,12 @@ describe('apiKey.service', () => {
   it('different HMAC secret would yield different digest', () => {
     const k = 'myapp_same'
     const ours = hashApiKey(k)
-    const other = createHmac('sha256', 'zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz').update(k).digest('hex')
+    const other = createHmac('sha256', 'samplee text to hash').update(k).digest('hex')
     expect(ours).not.toBe(other)
   })
 
   it('extractPrefix returns first 12 chars', () => {
-    const k = `${API_KEY_PREFIX}abcdefghij`
+    const k = `${API_KEY_PREFIX}sample api key`
     expect(extractPrefix(k)).toBe(`${API_KEY_PREFIX}abcd`)
   })
 

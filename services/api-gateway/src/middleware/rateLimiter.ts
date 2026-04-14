@@ -108,8 +108,8 @@ export function createRateLimiter(options: RateLimiterOptions): MiddlewareHandle
 }
 
 // ── Pre-built rate limiters for route groups ─────────────────────────────────
-export const authRateLimiter = createRateLimiter({ max: 5, window: 60 })
-export const refreshRateLimiter = createRateLimiter({ max: 10, window: 60 })
+export const authRateLimiter = createRateLimiter({ max: 6, window: 60 })
+export const refreshRateLimiter = createRateLimiter({ max: 12, window: 60 })
 export const generalRateLimiter = createRateLimiter({ max: 60, window: 60 })
-export const aiRateLimiter = createRateLimiter({ max: 10, window: 60 })
+export const aiRateLimiter = createRateLimiter({ max: 12, window: 60 })
 export const adminRateLimiter = createRateLimiter({ max: 120, window: 60 })
