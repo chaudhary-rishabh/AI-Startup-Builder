@@ -49,7 +49,7 @@ export const agentRuns = aiSchema.table(
     contextTokensEstimate: integer('context_tokens_estimate'),
     wasContextCompressed: boolean('was_context_compressed').notNull().default(false),
     docInjectionMode: varchar('doc_injection_mode', { length: 32 }),
-    retryOfRunId: uuid('retry_of_run_id').references(() => agentRuns.id),
+    retryOfRunId: uuid('retry_of_run_id'),
     batchNumber: integer('batch_number'),
     batchTotal: integer('batch_total'),
     startedAt: timestamp('started_at', { withTimezone: true }),

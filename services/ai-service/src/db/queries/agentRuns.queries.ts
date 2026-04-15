@@ -1,5 +1,5 @@
 import { paginate } from '@repo/db'
-import { and, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm'
+import { and, count, desc, eq, gte, inArray, lt } from 'drizzle-orm'
 
 import { agentRuns } from '../schema.js'
 import { getDb } from '../../lib/db.js'
@@ -14,6 +14,10 @@ export class ImmutabilityError extends Error {
 }
 
 const terminalStatuses = ['completed', 'failed', 'cancelled'] as const
+
+function isTerminal(status: string): boolean {
+  return (terminalStatuses as readonly string[]).includes(status)
+}
 
 export async function createAgentRun(data: NewAgentRun): Promise<AgentRun> {
   const db = getDb()
@@ -49,31 +53,11 @@ export async function updateAgentRunStatus(
   const [existing] = await db.select().from(agentRuns).where(eq(agentRuns.id, id)).limit(1)
   if (!existing) return undefined
 
-  if (terminalStatuses.includes(existing.status as (typeof terminalStatuses)[number])) {
-    if (data.status !== undefined && data.status !== existing.status) {
-      throw new ImmutabilityError()
-    }
-    if (
-      Object.keys(data).some(
-        (k) => k !== 'status' && (data as Record<string, unknown>)[k] !== undefined,
-      )
-    ) {
-      throw new ImmutabilityError()
-    }
+  if (isTerminal(existing.status)) {
+    throw new ImmutabilityError()
   }
 
-  if (existing.status !== 'pending' && existing.status !== 'running' && data.status) {
-    if (!terminalStatuses.includes(data.status as (typeof terminalStatuses)[number])) {
-      if (data.status !== existing.status) throw new ImmutabilityError()
-    }
-  }
-
-  const [row] = await db
-    .update(agentRuns)
-    .set({ ...data, updatedAt: undefined } as never)
-    .where(eq(agentRuns.id, id))
-    .returning()
-
+  const [row] = await db.update(agentRuns).set(data).where(eq(agentRuns.id, id)).returning()
   return row
 }
 
@@ -85,15 +69,16 @@ export async function findAgentRunById(id: string): Promise<AgentRun | undefined
 
 export async function findAgentRunsByProject(
   projectId: string,
-  opts: { page: number; limit: number; phase?: number },
+  opts: { page: number; limit: number; phase?: number; userId?: string },
 ): Promise<{ data: AgentRun[]; total: number }> {
   const db = getDb()
   const baseWhere = and(
     eq(agentRuns.projectId, projectId),
     opts.phase !== undefined ? eq(agentRuns.phase, opts.phase) : undefined,
+    opts.userId !== undefined ? eq(agentRuns.userId, opts.userId) : undefined,
   )
 
-  return paginate({
+  const result = await paginate({
     page: opts.page,
     limit: opts.limit,
     dataFn: (limit, offset) =>
@@ -105,13 +90,11 @@ export async function findAgentRunsByProject(
         .limit(limit)
         .offset(offset),
     countFn: async () => {
-      const [r] = await db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(agentRuns)
-        .where(baseWhere)
+      const [r] = await db.select({ count: count() }).from(agentRuns).where(baseWhere)
       return Number(r?.count ?? 0)
     },
-  }).then((r) => ({ data: r.data, total: r.meta.total }))
+  })
+  return { data: result.data, total: result.meta.total }
 }
 
 export async function findActiveRunsByUser(userId: string): Promise<AgentRun[]> {
@@ -119,9 +102,7 @@ export async function findActiveRunsByUser(userId: string): Promise<AgentRun[]> 
   return db
     .select()
     .from(agentRuns)
-    .where(
-      and(eq(agentRuns.userId, userId), inArray(agentRuns.status, ['pending', 'running'])),
-    )
+    .where(and(eq(agentRuns.userId, userId), inArray(agentRuns.status, ['pending', 'running'])))
 }
 
 export async function findActiveRunsByProject(
@@ -145,7 +126,7 @@ export async function cancelAgentRun(id: string): Promise<AgentRun | undefined> 
   const db = getDb()
   const [existing] = await db.select().from(agentRuns).where(eq(agentRuns.id, id)).limit(1)
   if (!existing) return undefined
-  if (existing.status === 'completed' || existing.status === 'failed' || existing.status === 'cancelled') {
+  if (isTerminal(existing.status)) {
     return existing
   }
   const [row] = await db
