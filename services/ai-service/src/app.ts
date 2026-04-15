@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 
+import { registerAllAgents } from './agents/index.js'
 import { corsMiddleware } from './middleware/cors.js'
 import { errorHandler } from './middleware/errorHandler.js'
 import { requestIdMiddleware } from './middleware/requestId.js'
@@ -10,6 +11,7 @@ import chatRoutes from './routes/chat.routes.js'
 import runsRoutes from './routes/runs.routes.js'
 
 export function createApp(): Hono {
+  registerAllAgents()
   const app = new Hono()
   app.use('*', requestIdMiddleware)
   app.use('*', corsMiddleware)

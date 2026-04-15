@@ -17,12 +17,12 @@ import { subscribeToStream } from '../services/streamingService.js'
 import type { AgentType } from '@repo/types'
 
 const PHASE_AGENT_MAP: Record<number, readonly AgentType[]> = {
-  1: ['idea_analyzer', 'market_research', 'validation_scorer'],
+  1: ['idea_analyzer', 'market_research'],
   2: ['prd_generator', 'user_flow', 'system_design', 'uiux'],
-  3: ['generate_frame'],
-  4: ['schema_generator', 'api_generator', 'backend', 'frontend', 'integration'],
-  5: ['testing', 'cicd'],
-  6: ['analytics', 'feedback_analyzer', 'growth_strategy'],
+  3: [],
+  4: [],
+  5: [],
+  6: [],
 }
 
 const RUN_DETAIL_CACHE_PREFIX = 'ai:run:detail:'

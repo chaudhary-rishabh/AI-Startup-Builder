@@ -1,6 +1,7 @@
 import type { AgentType } from '@repo/types'
 
 import { getAgent } from '../agents/registry.js'
+import { phase1AsRecord, phase2AsRecord } from '../agents/prompt.helpers.js'
 import * as agentOutputsQueries from '../db/queries/agentOutputs.queries.js'
 import * as agentRunsQueries from '../db/queries/agentRuns.queries.js'
 import { publishAgentRunCompleted } from '../events/publisher.js'
@@ -108,24 +109,31 @@ export async function executeAgentRun(input: OrchestratorInput): Promise<void> {
       },
     )
 
+    const mergedOutput: Record<string, unknown> =
+      phase === 1
+        ? { ...phase1AsRecord(context), ...runResult.outputData }
+        : phase === 2
+          ? { ...phase2AsRecord(context), ...runResult.outputData }
+          : runResult.outputData
+
     await agentOutputsQueries.createAgentOutput({
       runId,
-      outputData: runResult.outputData,
+      outputData: mergedOutput,
       rawText: runResult.rawText,
       parseSuccess: runResult.parseSuccess,
     })
 
-    await saveAgentOutputToProject(projectId, phase, runResult.outputData, agentType, requestId)
+    await saveAgentOutputToProject(projectId, phase, mergedOutput, agentType, requestId)
 
     if (agentType === 'uiux' && runResult.parseSuccess) {
-      const ds = runResult.outputData['designSystem']
+      const ds = mergedOutput['designSystem']
       if (ds && typeof ds === 'object') {
         await saveDesignTokensToCanvas(projectId, ds as Record<string, unknown>, requestId)
       }
     }
     if (agentType === 'generate_frame' && runResult.parseSuccess) {
-      const frame = runResult.outputData['frame']
-      const screenName = runResult.outputData['screenName']
+      const frame = mergedOutput['frame']
+      const screenName = mergedOutput['screenName']
       if (frame && typeof frame === 'object' && typeof screenName === 'string') {
         await appendFrameToCanvas(
           projectId,
@@ -164,7 +172,7 @@ export async function executeAgentRun(input: OrchestratorInput): Promise<void> {
       userId,
       phase,
       agentType,
-      runResult.outputData,
+      mergedOutput,
       runResult.totalTokens,
       durationMs,
       selectModel(agentType),

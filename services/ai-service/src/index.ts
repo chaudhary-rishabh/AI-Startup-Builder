@@ -2,6 +2,7 @@ import { pathToFileURL } from 'node:url'
 
 import { serve } from '@hono/node-server'
 
+import { registerAllAgents } from './agents/index.js'
 import { createApp } from './app.js'
 import { env } from './config/env.js'
 import { startEventConsumer, stopConsumer } from './events/consumer.js'
@@ -25,6 +26,7 @@ function shouldStartServer(): boolean {
 }
 
 if (shouldStartServer()) {
+  registerAllAgents()
   const app = createApp()
   let worker: ReturnType<typeof startAgentRunWorker> | undefined
 

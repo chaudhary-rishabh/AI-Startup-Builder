@@ -1,33 +1,12 @@
-import type { AgentType } from '@repo/types'
 import { Hono } from 'hono'
 
+import { listRegisteredAgentTypes } from '../agents/registry.js'
 import { getRedis } from '../lib/redis.js'
 import { ok } from '../lib/response.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { TOKEN_COSTS_PER_1K } from '../services/modelRouter.service.js'
 
-const AGENT_TYPES: AgentType[] = [
-  'idea_analyzer',
-  'market_research',
-  'validation_scorer',
-  'prd_generator',
-  'user_flow',
-  'system_design',
-  'uiux',
-  'generate_frame',
-  'schema_generator',
-  'api_generator',
-  'backend',
-  'frontend',
-  'integration',
-  'testing',
-  'cicd',
-  'analytics',
-  'feedback_analyzer',
-  'growth_strategy',
-]
-
-const CACHE_KEY = 'ai:catalog:agent-types'
+const CACHE_KEY = 'ai:catalog:agent-types:v2'
 const CACHE_TTL = 300
 
 const routes = new Hono()
@@ -38,12 +17,13 @@ routes.get('/agent-types', async (c) => {
   try {
     const hit = await redis.get(CACHE_KEY)
     if (hit) {
-      return ok(c, JSON.parse(hit) as { agents: AgentType[]; count: number })
+      return ok(c, JSON.parse(hit) as { agents: string[]; count: number })
     }
   } catch {
     /* ignore */
   }
-  const payload = { agents: AGENT_TYPES, count: AGENT_TYPES.length }
+  const agents = listRegisteredAgentTypes()
+  const payload = { agents, count: agents.length }
   try {
     await redis.setex(CACHE_KEY, CACHE_TTL, JSON.stringify(payload))
   } catch {

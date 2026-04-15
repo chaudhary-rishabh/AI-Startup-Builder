@@ -236,6 +236,82 @@ describe('agentOrchestrator.service', () => {
     )
   })
 
+  it('executeAgentRun merges phase 1 output when saving market_research', async () => {
+    fetchProjectContext.mockResolvedValue({
+      projectId: 'p',
+      projectName: 'P',
+      currentPhase: 1,
+      phase1Output: {
+        problem: 'Pain X',
+        solution: 'Fix Y',
+        icp: { description: 'Solo founders' },
+      } as never,
+    })
+    mockAgent('market_research', {
+      outputData: { verdict: 'yes', demandScore: 70 },
+      rawText: '{}',
+      parseSuccess: true,
+      promptTokens: 1,
+      completionTokens: 1,
+      totalTokens: 2,
+      costUsd: '0',
+    })
+    await executeAgentRun({
+      runId: '550e8400-e29b-41d4-a716-446655440099',
+      projectId: '660e8400-e29b-41d4-a716-446655440001',
+      userId: '550e8400-e29b-41d4-a716-446655440000',
+      phase: 1,
+      agentType: 'market_research',
+    })
+    expect(saveAgentOutputToProject).toHaveBeenCalledWith(
+      '660e8400-e29b-41d4-a716-446655440001',
+      1,
+      expect.objectContaining({
+        problem: 'Pain X',
+        verdict: 'yes',
+      }),
+      'market_research',
+      undefined,
+    )
+  })
+
+  it('executeAgentRun merges prior phase 2 output when saving system_design', async () => {
+    fetchProjectContext.mockResolvedValue({
+      projectId: 'p',
+      projectName: 'P',
+      currentPhase: 2,
+      phase2Output: {
+        features: [{ name: 'Auth', priority: 'must', description: 'Login' }],
+      } as never,
+    })
+    mockAgent('system_design', {
+      outputData: { frontendStack: 'Next.js 15', apiEndpoints: [] },
+      rawText: '{}',
+      parseSuccess: true,
+      promptTokens: 1,
+      completionTokens: 1,
+      totalTokens: 2,
+      costUsd: '0',
+    })
+    await executeAgentRun({
+      runId: '550e8400-e29b-41d4-a716-446655440099',
+      projectId: '660e8400-e29b-41d4-a716-446655440001',
+      userId: '550e8400-e29b-41d4-a716-446655440000',
+      phase: 2,
+      agentType: 'system_design',
+    })
+    expect(saveAgentOutputToProject).toHaveBeenCalledWith(
+      '660e8400-e29b-41d4-a716-446655440001',
+      2,
+      expect.objectContaining({
+        features: [{ name: 'Auth', priority: 'must', description: 'Login' }],
+        frontendStack: 'Next.js 15',
+      }),
+      'system_design',
+      undefined,
+    )
+  })
+
   it("executeAgentRun publishes 'doc_mode' stream event for RAG-eligible agents", async () => {
     resolveDocumentContext.mockResolvedValue({
       mode: 'direct',
