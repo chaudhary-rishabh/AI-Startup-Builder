@@ -36,6 +36,7 @@ export function estimateCost(model: string, promptTokens: number, completionToke
 
 export function getMaxOutputTokens(agentType: AgentType): number {
   if (agentType === 'backend' || agentType === 'frontend') return 16_384
+  if (agentType === 'integration') return 4096
   if (agentType === 'schema_generator') return 8192
   if (agentType === 'api_generator') return 6144
   if (agentType === 'skeleton') return 4096

@@ -6,7 +6,7 @@ import { ok } from '../lib/response.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { TOKEN_COSTS_PER_1K } from '../services/modelRouter.service.js'
 
-const CACHE_KEY = 'ai:catalog:agent-types:v4'
+const CACHE_KEY = 'ai:catalog:agent-types:v5'
 const CACHE_TTL = 300
 
 const routes = new Hono()

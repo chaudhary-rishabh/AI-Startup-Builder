@@ -133,7 +133,7 @@ export async function executeAgentRun(input: OrchestratorInput): Promise<void> {
 
   try {
     if (phase === 4 && isPhase4Orchestrated(agentType)) {
-      await orchestratePhase4(runId, projectId, userId, agentType, context)
+      await orchestratePhase4(runId, projectId, userId, agentType, context, userMessage)
       const mergedOutput: Record<string, unknown> = {
         ...phase4AsRecord(context),
         orchestrated: true,
