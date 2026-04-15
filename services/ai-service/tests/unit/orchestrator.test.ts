@@ -10,6 +10,7 @@ const fetchConversationHistory = vi.hoisted(() => vi.fn())
 const saveAgentOutputToProject = vi.hoisted(() => vi.fn())
 const saveDesignTokensToCanvas = vi.hoisted(() => vi.fn())
 const appendFrameToCanvas = vi.hoisted(() => vi.fn())
+const saveProjectPrototypeFile = vi.hoisted(() => vi.fn())
 const recordTokenUsage = vi.hoisted(() => vi.fn())
 const publishAgentRunCompleted = vi.hoisted(() => vi.fn())
 const checkAndEmitBudgetWarnings = vi.hoisted(() => vi.fn())
@@ -42,6 +43,7 @@ vi.mock('../../src/services/contextThread.service.js', () => ({
   saveAgentOutputToProject,
   saveDesignTokensToCanvas,
   appendFrameToCanvas,
+  saveProjectPrototypeFile,
 }))
 
 vi.mock('../../src/services/tokenBudget.service.js', () => ({
@@ -79,6 +81,7 @@ describe('agentOrchestrator.service', () => {
     saveAgentOutputToProject.mockResolvedValue(undefined)
     saveDesignTokensToCanvas.mockResolvedValue(undefined)
     appendFrameToCanvas.mockResolvedValue(undefined)
+    saveProjectPrototypeFile.mockResolvedValue(undefined)
     recordTokenUsage.mockResolvedValue(undefined)
     publishAgentRunCompleted.mockResolvedValue(undefined)
     checkAndEmitBudgetWarnings.mockResolvedValue(undefined)
@@ -184,10 +187,13 @@ describe('agentOrchestrator.service', () => {
     )
   })
 
-  it('executeAgentRun calls appendFrameToCanvas for generate_frame agent', async () => {
+  it('executeAgentRun calls appendFrameToCanvas and saves prototype HTML for generate_frame', async () => {
     mockAgent('generate_frame', {
-      outputData: { frame: { id: 'f' }, screenName: 'Home' },
-      rawText: '{}',
+      outputData: {
+        frame: { screenName: 'Home', html: '<div class="min-h-screen p-2">x</div>' },
+        screenName: 'Home',
+      },
+      rawText: '<div class="min-h-screen p-2">x</div>',
       parseSuccess: true,
       promptTokens: 1,
       completionTokens: 1,
@@ -203,8 +209,16 @@ describe('agentOrchestrator.service', () => {
     })
     expect(appendFrameToCanvas).toHaveBeenCalledWith(
       '660e8400-e29b-41d4-a716-446655440001',
-      { id: 'f' },
+      { screenName: 'Home', html: '<div class="min-h-screen p-2">x</div>' },
       'Home',
+      undefined,
+    )
+    expect(saveProjectPrototypeFile).toHaveBeenCalledWith(
+      '660e8400-e29b-41d4-a716-446655440001',
+      '/prototypes/Home.html',
+      '<div class="min-h-screen p-2">x</div>',
+      'html',
+      'generate_frame',
       undefined,
     )
   })

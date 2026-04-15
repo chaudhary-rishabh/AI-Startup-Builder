@@ -59,6 +59,21 @@ export function phase2AsRecord(context: ProjectContext): Record<string, unknown>
   return p && typeof p === 'object' && !Array.isArray(p) ? (p as Record<string, unknown>) : {}
 }
 
+export function phase3AsRecord(context: ProjectContext): Record<string, unknown> {
+  const p = context.phase3Output as unknown
+  return p && typeof p === 'object' && !Array.isArray(p) ? { ...(p as Record<string, unknown>) } : {}
+}
+
+export function phase5AsRecord(context: ProjectContext): Record<string, unknown> {
+  const p = context.phase5Output as unknown
+  return p && typeof p === 'object' && !Array.isArray(p) ? { ...(p as Record<string, unknown>) } : {}
+}
+
+export function phase6AsRecord(context: ProjectContext): Record<string, unknown> {
+  const p = context.phase6Output as unknown
+  return p && typeof p === 'object' && !Array.isArray(p) ? { ...(p as Record<string, unknown>) } : {}
+}
+
 export function icpDescriptionFromPhase1(rec: Record<string, unknown>): string {
   const icp = rec['icp']
   if (typeof icp === 'string') return icp

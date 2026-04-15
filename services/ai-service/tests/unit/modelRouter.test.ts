@@ -44,6 +44,8 @@ describe('modelRouter', () => {
     expect(getMaxOutputTokens('frontend')).toBe(16_384)
     expect(getMaxOutputTokens('prd_generator')).toBe(8192)
     expect(getMaxOutputTokens('uiux')).toBe(8192)
+    expect(getMaxOutputTokens('testing')).toBe(8192)
+    expect(getMaxOutputTokens('growth_strategy')).toBe(8192)
     expect(getMaxOutputTokens('idea_analyzer')).toBe(4096)
   })
 })

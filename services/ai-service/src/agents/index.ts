@@ -5,6 +5,12 @@ import { PrdGeneratorAgent } from './phase2/prdGenerator.agent.js'
 import { UserFlowAgent } from './phase2/userFlowAgent.agent.js'
 import { SystemDesignAgent } from './phase2/systemDesignAgent.agent.js'
 import { UiuxAgent } from './phase2/uiuxAgent.agent.js'
+import { GenerateFrameAgent } from './phase3/generateFrame.agent.js'
+import { TestingAgent } from './phase5/testingAgent.agent.js'
+import { CicdAgent } from './phase5/cicdAgent.agent.js'
+import { AnalyticsAgent } from './phase6/analyticsAgent.agent.js'
+import { FeedbackAnalyzerAgent } from './phase6/feedbackAnalyzer.agent.js'
+import { GrowthStrategyAgent } from './phase6/growthStrategy.agent.js'
 
 let registered = false
 
@@ -17,4 +23,10 @@ export function registerAllAgents(): void {
   registerAgent('user_flow', () => new UserFlowAgent())
   registerAgent('system_design', () => new SystemDesignAgent())
   registerAgent('uiux', () => new UiuxAgent())
+  registerAgent('generate_frame', () => new GenerateFrameAgent())
+  registerAgent('testing', () => new TestingAgent())
+  registerAgent('cicd', () => new CicdAgent())
+  registerAgent('analytics', () => new AnalyticsAgent())
+  registerAgent('feedback_analyzer', () => new FeedbackAnalyzerAgent())
+  registerAgent('growth_strategy', () => new GrowthStrategyAgent())
 }

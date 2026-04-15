@@ -1,7 +1,13 @@
 import type { AgentType } from '@repo/types'
 
 import { getAgent } from '../agents/registry.js'
-import { phase1AsRecord, phase2AsRecord } from '../agents/prompt.helpers.js'
+import {
+  phase1AsRecord,
+  phase2AsRecord,
+  phase3AsRecord,
+  phase5AsRecord,
+  phase6AsRecord,
+} from '../agents/prompt.helpers.js'
 import * as agentOutputsQueries from '../db/queries/agentOutputs.queries.js'
 import * as agentRunsQueries from '../db/queries/agentRuns.queries.js'
 import { publishAgentRunCompleted } from '../events/publisher.js'
@@ -13,6 +19,7 @@ import {
   fetchProjectContext,
   saveAgentOutputToProject,
   saveDesignTokensToCanvas,
+  saveProjectPrototypeFile,
 } from './contextThread.service.js'
 import { publishStreamChunk, publishStreamEvent } from './streamingService.js'
 import { checkAndEmitBudgetWarnings, recordTokenUsage } from './tokenBudget.service.js'
@@ -109,12 +116,30 @@ export async function executeAgentRun(input: OrchestratorInput): Promise<void> {
       },
     )
 
-    const mergedOutput: Record<string, unknown> =
-      phase === 1
-        ? { ...phase1AsRecord(context), ...runResult.outputData }
-        : phase === 2
-          ? { ...phase2AsRecord(context), ...runResult.outputData }
-          : runResult.outputData
+    let mergedOutput: Record<string, unknown> = runResult.outputData
+    if (phase === 1) {
+      mergedOutput = { ...phase1AsRecord(context), ...runResult.outputData }
+    } else if (phase === 2) {
+      mergedOutput = { ...phase2AsRecord(context), ...runResult.outputData }
+    } else if (phase === 3) {
+      const prior = phase3AsRecord(context)
+      mergedOutput = { ...prior, ...runResult.outputData }
+      if (agentType === 'generate_frame' && runResult.parseSuccess && mergedOutput['frame']) {
+        const frame = mergedOutput['frame'] as Record<string, unknown>
+        const prevScreens = Array.isArray(prior['screens']) ? [...(prior['screens'] as unknown[])] : []
+        prevScreens.push({
+          screenName: frame['screenName'] ?? mergedOutput['screenName'],
+          html: frame['html'],
+          route: frame['route'],
+          generatedAt: frame['generatedAt'],
+        })
+        mergedOutput['screens'] = prevScreens
+      }
+    } else if (phase === 5) {
+      mergedOutput = { ...phase5AsRecord(context), ...runResult.outputData }
+    } else if (phase === 6) {
+      mergedOutput = { ...phase6AsRecord(context), ...runResult.outputData }
+    }
 
     await agentOutputsQueries.createAgentOutput({
       runId,
@@ -141,6 +166,17 @@ export async function executeAgentRun(input: OrchestratorInput): Promise<void> {
           screenName,
           requestId,
         )
+        const html = (frame as Record<string, unknown>)['html']
+        if (typeof html === 'string' && html.length > 0) {
+          await saveProjectPrototypeFile(
+            projectId,
+            `/prototypes/${screenName}.html`,
+            html,
+            'html',
+            'generate_frame',
+            requestId,
+          )
+        }
       }
     }
 

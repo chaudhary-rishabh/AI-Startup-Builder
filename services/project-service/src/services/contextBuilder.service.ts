@@ -109,6 +109,9 @@ function maybeCompress(ctx: ProjectContext): ProjectContext {
   if (ctx.phase5Output) {
     next.phase5Output = compressPhase5(ctx.phase5Output) as unknown as Phase5Output
   }
+  if (ctx.phase6Output) {
+    next.phase6Output = { _compressed: true, keys: Object.keys(ctx.phase6Output) }
+  }
   return next
 }
 
@@ -144,6 +147,9 @@ export async function buildProjectContext(
         break
       case 5:
         base.phase5Output = raw as unknown as Phase5Output
+        break
+      case 6:
+        base.phase6Output = raw
         break
       default:
         break

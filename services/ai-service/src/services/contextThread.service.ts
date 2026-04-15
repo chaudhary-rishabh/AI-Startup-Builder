@@ -111,3 +111,22 @@ export async function appendFrameToCanvas(
     console.error('[ai-service] appendFrameToCanvas failed', e)
   }
 }
+
+export async function saveProjectPrototypeFile(
+  projectId: string,
+  filePath: string,
+  content: string,
+  language: string,
+  agentType: string,
+  _requestId?: string,
+): Promise<void> {
+  try {
+    await fetch(`${baseUrl()}/internal/projects/${encodeURIComponent(projectId)}/files`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: filePath, content, language, agentType }),
+    })
+  } catch (e) {
+    console.error('[ai-service] saveProjectPrototypeFile failed', e)
+  }
+}

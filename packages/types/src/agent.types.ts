@@ -83,6 +83,8 @@ export interface ProjectContext {
   phase3Output?: Phase3Output
   phase4Output?: Phase4Output
   phase5Output?: Phase5Output
+  /** Phase 6 growth outputs (merged JSON from analytics, feedback, strategy agents). */
+  phase6Output?: Record<string, unknown>
   ragContext?: string
 }
 
