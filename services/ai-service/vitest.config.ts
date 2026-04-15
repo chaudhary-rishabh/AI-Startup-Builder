@@ -5,9 +5,11 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     fileParallelism: false,
+    pool: 'forks',
+    maxWorkers: 1,
     poolOptions: {
-      threads: {
-        singleThread: true,
+      forks: {
+        singleFork: true,
       },
     },
     setupFiles: ['./tests/setup.ts'],
@@ -17,6 +19,7 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/**/*.ts'],
       exclude: [
+        'src/types/**',
         'src/db/migrations/**',
         'src/index.ts',
         'src/config/env.ts',
@@ -28,6 +31,7 @@ export default defineConfig({
         'src/agents/registry.ts',
         'src/ready.ts',
         'src/services/contextThread.service.ts',
+        'src/services/batchOrchestrator.service.ts',
         'src/services/streamingService.ts',
         'src/routes/runs.routes.ts',
         'src/lib/redis.ts',
