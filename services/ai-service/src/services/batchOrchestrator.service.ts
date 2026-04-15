@@ -2,12 +2,13 @@ import Anthropic from '@anthropic-ai/sdk'
 
 import type { AgentType, ProjectContext } from '@repo/types'
 
+import { getAgent } from '../agents/registry.js'
 import { env } from '../config/env.js'
 import * as generationPlansQueries from '../db/queries/generationPlans.queries.js'
 import type { FileSpec } from '../types/phase4.types.js'
 
 import { crossCheck3B, crossCheck3C } from './crossCheck.service.js'
-import { estimateCost, selectModel } from './modelRouter.service.js'
+import { estimateCost, getMaxOutputTokens, selectModel } from './modelRouter.service.js'
 import { recordTokenUsage } from './tokenBudget.service.js'
 import { publishStreamChunk, publishStreamEvent } from './streamingService.js'
 
@@ -179,7 +180,7 @@ function groupByBatch(files: FileSpec[]): Map<number, FileSpec[]> {
   return m
 }
 
-function buildFilePrompt(
+function buildGenericFilePrompt(
   file: FileSpec,
   priorFiles: { path: string; content: string }[],
   context: ProjectContext,
@@ -193,6 +194,26 @@ function buildFilePrompt(
       'You are a senior engineer. Output ONLY the full file source code for the requested path. No markdown fences, no commentary.',
     user: `Project: ${context.projectName}\nFile path: ${file.path}\nDescription: ${file.description}\nLayer: ${file.layer}\nEstimated lines: ${file.estimatedLines}\n\nPrior dependency files:\n${prior}\n\nWrite the complete file contents now.`,
   }
+}
+
+type FilePromptFn = (
+  file: FileSpec,
+  priorFilesContent: Array<{ path: string; content: string }>,
+  context: ProjectContext,
+) => { system: string; user: string }
+
+function resolveFilePrompt(
+  agentType: AgentType,
+  file: FileSpec,
+  priorForAgent: Array<{ path: string; content: string }>,
+  context: ProjectContext,
+): { system: string; user: string } {
+  const agent = getAgent(agentType)
+  const fn = (agent as { buildFilePrompt?: FilePromptFn }).buildFilePrompt
+  if (typeof fn === 'function') {
+    return fn.call(agent, file, priorForAgent, context)
+  }
+  return buildGenericFilePrompt(file, priorForAgent, context)
 }
 
 export async function orchestratePhase4(
@@ -270,22 +291,26 @@ export async function orchestratePhase4(
       description: getBatchDescription(batchFiles),
     })
 
+    const batchGeneratedPrior: { path: string; content: string }[] = []
     for (const file of batchFiles) {
       await publishStreamEvent(runId, 'file_start', { path: file.path })
 
-      const prior: { path: string; content: string }[] = []
+      const dependencyPrior: { path: string; content: string }[] = []
       for (const dep of file.dependencies) {
         const earlier = files.some((f) => f.path === dep && f.batchNumber < file.batchNumber)
         if (!earlier) continue
         const content = await readFileFromProjectFiles(projectId, dep)
-        prior.push({ path: dep, content })
+        dependencyPrior.push({ path: dep, content })
       }
 
-      const prompt = buildFilePrompt(file, prior, context)
+      const priorForAgent =
+        agentType === 'schema_generator' ? [...batchGeneratedPrior] : dependencyPrior
+
+      const prompt = resolveFilePrompt(agentType as AgentType, file, priorForAgent, context)
       let fileContent = ''
       const stream = await client.messages.stream({
         model,
-        max_tokens: calculateMaxTokens(file.complexity),
+        max_tokens: getMaxOutputTokens(agentType as AgentType),
         system: prompt.system,
         messages: [{ role: 'user', content: prompt.user }],
       })
@@ -321,6 +346,7 @@ export async function orchestratePhase4(
       })
 
       batchGenerated.push({ path: file.path, content: fileContent })
+      batchGeneratedPrior.push({ path: file.path, content: fileContent })
       await publishStreamEvent(runId, 'file_complete', {
         path: file.path,
         sizeBytes: Buffer.byteLength(fileContent, 'utf8'),

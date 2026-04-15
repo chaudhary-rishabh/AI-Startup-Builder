@@ -14,14 +14,14 @@ describe('catalogue routes', () => {
     token = await signTestAccessToken({ sub: uid, plan: 'free' })
   })
 
-  it('GET /ai/agent-types returns thirteen registered agents', async () => {
+  it('GET /ai/agent-types returns fifteen registered agents', async () => {
     const res = await app.request('http://localhost/ai/agent-types', {
       headers: { Authorization: `Bearer ${token}` },
     })
     expect(res.status).toBe(200)
     const body = (await res.json()) as { data: { agents: string[]; count: number } }
-    expect(body.data.count).toBe(13)
-    expect(new Set(body.data.agents).size).toBe(13)
+    expect(body.data.count).toBe(15)
+    expect(new Set(body.data.agents).size).toBe(15)
     expect(body.data.agents).toEqual(
       expect.arrayContaining([
         'idea_analyzer',
@@ -32,6 +32,8 @@ describe('catalogue routes', () => {
         'uiux',
         'generate_frame',
         'skeleton',
+        'schema_generator',
+        'api_generator',
         'testing',
         'cicd',
         'analytics',

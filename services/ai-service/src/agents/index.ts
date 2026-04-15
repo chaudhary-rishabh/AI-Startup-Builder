@@ -11,6 +11,8 @@ import { CicdAgent } from './phase5/cicdAgent.agent.js'
 import { AnalyticsAgent } from './phase6/analyticsAgent.agent.js'
 import { FeedbackAnalyzerAgent } from './phase6/feedbackAnalyzer.agent.js'
 import { GrowthStrategyAgent } from './phase6/growthStrategy.agent.js'
+import { ApiGeneratorAgent } from './phase4/apiGenerator.agent.js'
+import { SchemaGeneratorAgent } from './phase4/schemaGenerator.agent.js'
 import { SkeletonAgent } from './phase4/skeletonAgent.agent.js'
 
 let registered = false
@@ -26,6 +28,8 @@ export function registerAllAgents(): void {
   registerAgent('uiux', () => new UiuxAgent())
   registerAgent('generate_frame', () => new GenerateFrameAgent())
   registerAgent('skeleton', () => new SkeletonAgent())
+  registerAgent('schema_generator', () => new SchemaGeneratorAgent())
+  registerAgent('api_generator', () => new ApiGeneratorAgent())
   registerAgent('testing', () => new TestingAgent())
   registerAgent('cicd', () => new CicdAgent())
   registerAgent('analytics', () => new AnalyticsAgent())
