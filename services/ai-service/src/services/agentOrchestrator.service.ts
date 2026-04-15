@@ -1,15 +1,19 @@
 import type { AgentType } from '@repo/types'
 
+import { SkeletonAgent } from '../agents/phase4/skeletonAgent.agent.js'
 import { getAgent } from '../agents/registry.js'
+import type { BaseAgent } from '../agents/base.agent.js'
 import {
   phase1AsRecord,
   phase2AsRecord,
   phase3AsRecord,
+  phase4AsRecord,
   phase5AsRecord,
   phase6AsRecord,
 } from '../agents/prompt.helpers.js'
 import * as agentOutputsQueries from '../db/queries/agentOutputs.queries.js'
 import * as agentRunsQueries from '../db/queries/agentRuns.queries.js'
+import { getRedis } from '../lib/redis.js'
 import { publishAgentRunCompleted } from '../events/publisher.js'
 import { getRAGEligibleAgents, selectModel } from './modelRouter.service.js'
 import { resolveDocumentContext } from './documentIntelligence.service.js'
@@ -21,8 +25,21 @@ import {
   saveDesignTokensToCanvas,
   saveProjectPrototypeFile,
 } from './contextThread.service.js'
+import { orchestratePhase4 } from './batchOrchestrator.service.js'
+import {
+  crossCheck0,
+  crossCheck1A,
+  crossCheck1B,
+  crossCheck2,
+  crossCheck3A,
+} from './crossCheck.service.js'
+import type { CrossCheckResult } from './crossCheck.service.js'
+import { estimateProjectSize } from './estimateProjectSize.service.js'
+import { generatePhaseDoc } from './docGenerator.service.js'
 import { publishStreamChunk, publishStreamEvent } from './streamingService.js'
 import { checkAndEmitBudgetWarnings, recordTokenUsage } from './tokenBudget.service.js'
+
+import type { FileSpec } from '../types/phase4.types.js'
 
 export interface OrchestratorInput {
   runId: string
@@ -37,8 +54,29 @@ export interface OrchestratorInput {
 
 const RAG_ELIGIBLE = new Set<string>(getRAGEligibleAgents())
 
+const PHASE4_ORCHESTRATED = new Set<AgentType>([
+  'schema_generator',
+  'api_generator',
+  'backend',
+  'frontend',
+  'integration',
+])
+
+const PHASE_COMPLETING_AGENTS: Partial<Record<AgentType, number>> = {
+  market_research: 1,
+  uiux: 2,
+  generate_frame: 3,
+  integration: 4,
+  cicd: 5,
+  growth_strategy: 6,
+}
+
 function estimateTokenCount(text: string): number {
   return Math.ceil(text.length / 4)
+}
+
+function isPhase4Orchestrated(agentType: AgentType): boolean {
+  return PHASE4_ORCHESTRATED.has(agentType)
 }
 
 export function classifyError(error: unknown): string {
@@ -57,7 +95,7 @@ export async function executeAgentRun(input: OrchestratorInput): Promise<void> {
   const { runId, projectId, userId, phase, agentType, userMessage, requestId, authorization } =
     input
 
-  const agent = getAgent(agentType)
+  const agent: BaseAgent | null = isPhase4Orchestrated(agentType) ? null : getAgent(agentType)
 
   await agentRunsQueries.updateAgentRunStatus(runId, {
     status: 'running',
@@ -71,7 +109,7 @@ export async function executeAgentRun(input: OrchestratorInput): Promise<void> {
   let documentContent = ''
   let docMode: 'direct' | 'compressed' | 'contextual_rag' | 'none' = 'none'
 
-  if (RAG_ELIGIBLE.has(agentType)) {
+  if (agent && RAG_ELIGIBLE.has(agentType)) {
     const docResult = await resolveDocumentContext(
       userId,
       projectId,
@@ -94,6 +132,67 @@ export async function executeAgentRun(input: OrchestratorInput): Promise<void> {
   })
 
   try {
+    if (phase === 4 && isPhase4Orchestrated(agentType)) {
+      await orchestratePhase4(runId, projectId, userId, agentType, context)
+      const mergedOutput: Record<string, unknown> = {
+        ...phase4AsRecord(context),
+        orchestrated: true,
+        agentType,
+      }
+      await agentOutputsQueries.createAgentOutput({
+        runId,
+        outputData: mergedOutput,
+        rawText: '',
+        parseSuccess: true,
+      })
+      await saveAgentOutputToProject(projectId, phase, mergedOutput, agentType, requestId)
+
+      const phaseForDoc = PHASE_COMPLETING_AGENTS[agentType]
+      if (phaseForDoc !== undefined) {
+        const freshContext = await fetchProjectContext(projectId, userId, requestId)
+        await generatePhaseDoc(phaseForDoc, projectId, freshContext).catch((err) =>
+          console.error('[ai-service] Doc generation failed (non-fatal)', { err, agentType, projectId }),
+        )
+      }
+
+      await recordTokenUsage(userId, 0, '0')
+      const durationMs = Date.now() - start
+      await agentRunsQueries.updateAgentRunStatus(runId, {
+        status: 'completed',
+        completedAt: new Date(),
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        costUsd: '0',
+        durationMs,
+        ragContextUsed: docMode !== 'none',
+        docInjectionMode: docMode,
+        wasContextCompressed: docMode === 'compressed',
+      })
+      await publishStreamEvent(runId, 'complete', {
+        tokensUsed: 0,
+        durationMs,
+        docMode,
+      })
+      await publishAgentRunCompleted(
+        runId,
+        projectId,
+        userId,
+        phase,
+        agentType,
+        mergedOutput,
+        0,
+        durationMs,
+        selectModel(agentType),
+      )
+      await checkAndEmitBudgetWarnings(userId)
+      return
+    }
+
+    if (!agent) {
+      throw new Error(`No agent instance for ${agentType}`)
+    }
+
     const runInput = {
       projectId,
       userId,
@@ -135,10 +234,31 @@ export async function executeAgentRun(input: OrchestratorInput): Promise<void> {
         })
         mergedOutput['screens'] = prevScreens
       }
+    } else if (phase === 4) {
+      mergedOutput = { ...phase4AsRecord(context), ...runResult.outputData }
     } else if (phase === 5) {
       mergedOutput = { ...phase5AsRecord(context), ...runResult.outputData }
     } else if (phase === 6) {
       mergedOutput = { ...phase6AsRecord(context), ...runResult.outputData }
+    }
+
+    let ideaCross: CrossCheckResult | undefined
+    let marketCross: CrossCheckResult | undefined
+    if (agentType === 'idea_analyzer') {
+      ideaCross = crossCheck1A(mergedOutput)
+    }
+    if (agentType === 'market_research') {
+      marketCross = crossCheck1B(mergedOutput)
+    }
+
+    if (agentType === 'skeleton' && runResult.parseSuccess) {
+      const rawFiles = mergedOutput['files']
+      const files: FileSpec[] = Array.isArray(rawFiles) ? (rawFiles as FileSpec[]) : []
+      const check3a = crossCheck3A(files, context)
+      mergedOutput['files'] = check3a.fixedPlan
+      if (agent instanceof SkeletonAgent) {
+        await agent.savePlan(projectId, check3a.fixedPlan, context)
+      }
     }
 
     await agentOutputsQueries.createAgentOutput({
@@ -149,6 +269,76 @@ export async function executeAgentRun(input: OrchestratorInput): Promise<void> {
     })
 
     await saveAgentOutputToProject(projectId, phase, mergedOutput, agentType, requestId)
+
+    if (ideaCross) {
+      await publishStreamEvent(runId, 'cross_check', {
+        check: 'check_1a_idea',
+        passed: ideaCross.passed,
+        issues: ideaCross.issues,
+        autoFixed: ideaCross.autoFixed,
+      })
+    }
+    if (marketCross) {
+      await publishStreamEvent(runId, 'cross_check', {
+        check: 'check_1b_market',
+        passed: marketCross.passed,
+        issues: marketCross.issues,
+        autoFixed: marketCross.autoFixed,
+      })
+    }
+
+    if (agentType === 'uiux') {
+      const freshContext = await fetchProjectContext(projectId, userId, requestId)
+      const estimate = estimateProjectSize(freshContext)
+      const check0 = crossCheck0(freshContext, estimate)
+      const check2 = crossCheck2(freshContext)
+      await publishStreamEvent(runId, 'cross_check', {
+        check: 'check_0_estimate',
+        passed: check0.passed,
+        issues: check0.issues,
+      })
+      await publishStreamEvent(runId, 'cross_check', {
+        check: 'check_2_phase2',
+        passed: check2.passed,
+        issues: check2.issues,
+      })
+      const redis = getRedis()
+      await redis.setex(`ai:estimate:${projectId}`, 3600, JSON.stringify(estimate))
+    }
+
+    const phaseForDoc = PHASE_COMPLETING_AGENTS[agentType]
+    if (phaseForDoc !== undefined) {
+      const freshContext = await fetchProjectContext(projectId, userId, requestId)
+      await generatePhaseDoc(phaseForDoc, projectId, freshContext).catch((err) =>
+        console.error('[ai-service] Doc generation failed (non-fatal)', { err, agentType, projectId }),
+      )
+    }
+
+    if (agentType === 'skeleton' && runResult.parseSuccess) {
+      const files = mergedOutput['files'] as FileSpec[]
+      const totalFiles = Array.isArray(files) ? files.length : 0
+      const tier =
+        totalFiles <= 25
+          ? 'small'
+          : totalFiles <= 75
+            ? 'standard'
+            : totalFiles <= 150
+              ? 'large'
+              : 'enterprise'
+      const batchNums = Array.isArray(files) ? files.map((f) => f.batchNumber) : [1]
+      const totalBatches = batchNums.length > 0 ? Math.max(...batchNums) : 1
+      await publishStreamEvent(runId, 'batch_complete', {
+        summary: `Skeleton plan saved (${totalFiles} files)`,
+        totalFiles,
+        totalBatches,
+        tier,
+      })
+      await publishStreamEvent(runId, 'skeleton_complete', {
+        totalFiles,
+        totalBatches,
+        tier,
+      })
+    }
 
     if (agentType === 'uiux' && runResult.parseSuccess) {
       const ds = mergedOutput['designSystem']

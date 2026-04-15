@@ -11,6 +11,7 @@ import { CicdAgent } from './phase5/cicdAgent.agent.js'
 import { AnalyticsAgent } from './phase6/analyticsAgent.agent.js'
 import { FeedbackAnalyzerAgent } from './phase6/feedbackAnalyzer.agent.js'
 import { GrowthStrategyAgent } from './phase6/growthStrategy.agent.js'
+import { SkeletonAgent } from './phase4/skeletonAgent.agent.js'
 
 let registered = false
 
@@ -24,6 +25,7 @@ export function registerAllAgents(): void {
   registerAgent('system_design', () => new SystemDesignAgent())
   registerAgent('uiux', () => new UiuxAgent())
   registerAgent('generate_frame', () => new GenerateFrameAgent())
+  registerAgent('skeleton', () => new SkeletonAgent())
   registerAgent('testing', () => new TestingAgent())
   registerAgent('cicd', () => new CicdAgent())
   registerAgent('analytics', () => new AnalyticsAgent())

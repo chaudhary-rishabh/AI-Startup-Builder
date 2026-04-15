@@ -12,6 +12,7 @@ const agentTypeValues: [AgentType, ...AgentType[]] = [
   'system_design',
   'uiux',
   'generate_frame',
+  'skeleton',
   'schema_generator',
   'api_generator',
   'backend',

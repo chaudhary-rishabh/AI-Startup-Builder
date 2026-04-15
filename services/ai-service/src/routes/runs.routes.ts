@@ -20,7 +20,7 @@ const PHASE_AGENT_MAP: Record<number, readonly AgentType[]> = {
   1: ['idea_analyzer', 'market_research'],
   2: ['prd_generator', 'user_flow', 'system_design', 'uiux'],
   3: ['generate_frame'],
-  4: [],
+  4: ['skeleton'],
   5: ['testing', 'cicd'],
   6: ['analytics', 'feedback_analyzer', 'growth_strategy'],
 }

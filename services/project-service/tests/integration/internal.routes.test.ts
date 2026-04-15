@@ -18,6 +18,8 @@ const lastActiveMocks = vi.hoisted(() => ({
 
 const fileMocks = vi.hoisted(() => ({
   upsertFile: vi.fn(),
+  findFilesByProject: vi.fn(),
+  findFileByPath: vi.fn(),
 }))
 
 const canvasMocks = vi.hoisted(() => ({
@@ -109,6 +111,65 @@ describe('internal routes', () => {
     const json = (await res.json()) as { data: { saved: boolean; file: { id: string } } }
     expect(json.data.saved).toBe(true)
     expect(json.data.file.id).toBe('f1')
+  })
+
+  it('GET /internal/projects/:id/files lists files', async () => {
+    fileMocks.findFilesByProject.mockResolvedValue([
+      {
+        id: 'f1',
+        projectId: pid,
+        path: 'a.ts',
+        content: 'hello',
+        language: 'typescript',
+        agentType: 'backend',
+        isModified: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ] as never)
+
+    const res = await app.request(`http://localhost/internal/projects/${pid}/files`)
+    expect(res.status).toBe(200)
+    const json = (await res.json()) as {
+      data: { path: string; content: string; language: string | null }[]
+    }
+    expect(json.data).toHaveLength(1)
+    expect(json.data[0]?.path).toBe('a.ts')
+    expect(json.data[0]?.content).toBe('hello')
+  })
+
+  it('GET /internal/projects/:id/files/content returns file body', async () => {
+    fileMocks.findFileByPath.mockResolvedValue({
+      id: 'f1',
+      projectId: pid,
+      path: 'a.ts',
+      content: 'body',
+      language: 'typescript',
+      agentType: null,
+      isModified: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as never)
+
+    const res = await app.request(
+      `http://localhost/internal/projects/${pid}/files/content?path=${encodeURIComponent('a.ts')}`,
+    )
+    expect(res.status).toBe(200)
+    const json = (await res.json()) as { data: { content: string; found: boolean } }
+    expect(json.data.found).toBe(true)
+    expect(json.data.content).toBe('body')
+  })
+
+  it('GET /internal/projects/:id/files/content returns empty when missing', async () => {
+    fileMocks.findFileByPath.mockResolvedValue(undefined)
+
+    const res = await app.request(
+      `http://localhost/internal/projects/${pid}/files/content?path=${encodeURIComponent('missing.ts')}`,
+    )
+    expect(res.status).toBe(200)
+    const json = (await res.json()) as { data: { content: string; found: boolean } }
+    expect(json.data.found).toBe(false)
+    expect(json.data.content).toBe('')
   })
 
   it('POST /internal/projects/:id/files/batch upserts multiple', async () => {

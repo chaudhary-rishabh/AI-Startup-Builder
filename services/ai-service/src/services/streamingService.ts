@@ -28,7 +28,8 @@ export async function publishStreamEvent(
     | 'batch_start'
     | 'batch_complete'
     | 'cross_check'
-    | 'doc_mode',
+    | 'doc_mode'
+    | 'skeleton_complete',
   payload?: Record<string, unknown>,
 ): Promise<void> {
   const body = JSON.stringify({ type: eventType, runId, ts: Date.now(), ...payload })

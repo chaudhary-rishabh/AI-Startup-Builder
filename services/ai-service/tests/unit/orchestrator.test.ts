@@ -15,6 +15,16 @@ const recordTokenUsage = vi.hoisted(() => vi.fn())
 const publishAgentRunCompleted = vi.hoisted(() => vi.fn())
 const checkAndEmitBudgetWarnings = vi.hoisted(() => vi.fn())
 const getAgent = vi.hoisted(() => vi.fn())
+const orchestratePhase4 = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+const generatePhaseDoc = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+
+vi.mock('../../src/services/batchOrchestrator.service.js', () => ({
+  orchestratePhase4,
+}))
+
+vi.mock('../../src/services/docGenerator.service.js', () => ({
+  generatePhaseDoc,
+}))
 
 vi.mock('../../src/db/queries/agentRuns.queries.js', () => ({
   updateAgentRunStatus,
@@ -85,6 +95,8 @@ describe('agentOrchestrator.service', () => {
     recordTokenUsage.mockResolvedValue(undefined)
     publishAgentRunCompleted.mockResolvedValue(undefined)
     checkAndEmitBudgetWarnings.mockResolvedValue(undefined)
+    orchestratePhase4.mockResolvedValue(undefined)
+    generatePhaseDoc.mockResolvedValue(undefined)
   })
 
   function mockAgent(agentType: string, runResult: Record<string, unknown>) {
@@ -161,6 +173,13 @@ describe('agentOrchestrator.service', () => {
       agentType: 'backend',
     })
     expect(resolveDocumentContext).not.toHaveBeenCalled()
+    expect(orchestratePhase4).toHaveBeenCalledWith(
+      '550e8400-e29b-41d4-a716-446655440099',
+      '660e8400-e29b-41d4-a716-446655440001',
+      '550e8400-e29b-41d4-a716-446655440000',
+      'backend',
+      expect.any(Object),
+    )
   })
 
   it('executeAgentRun calls saveDesignTokensToCanvas for uiux agent', async () => {

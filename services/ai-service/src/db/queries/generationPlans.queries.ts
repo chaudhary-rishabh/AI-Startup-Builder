@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
 
 import { generationPlans } from '../schema.js'
 import { getDb } from '../../lib/db.js'
@@ -18,14 +18,22 @@ export async function findPlanByProjectId(projectId: string): Promise<Generation
     .select()
     .from(generationPlans)
     .where(eq(generationPlans.projectId, projectId))
+    .orderBy(desc(generationPlans.createdAt))
     .limit(1)
   return row
+}
+
+export async function deletePlansByProjectId(projectId: string): Promise<void> {
+  const db = getDb()
+  await db.delete(generationPlans).where(eq(generationPlans.projectId, projectId))
 }
 
 export async function updatePlanProgress(
   projectId: string,
   patch: { completedBatches: number; status: string },
 ): Promise<void> {
+  const plan = await findPlanByProjectId(projectId)
+  if (!plan) return
   const db = getDb()
   await db
     .update(generationPlans)
@@ -34,5 +42,5 @@ export async function updatePlanProgress(
       status: patch.status,
       updatedAt: new Date(),
     })
-    .where(eq(generationPlans.projectId, projectId))
+    .where(eq(generationPlans.id, plan.id))
 }

@@ -87,6 +87,29 @@ routes.post(
   },
 )
 
+routes.get('/projects/:id/files', async (c) => {
+  const id = c.req.param('id')
+  const rows = await fileQueries.findFilesByProject(id)
+  return ok(
+    c,
+    rows.map((r) => ({
+      path: r.path,
+      content: r.content,
+      language: r.language ?? null,
+    })),
+  )
+})
+
+routes.get('/projects/:id/files/content', async (c) => {
+  const id = c.req.param('id')
+  const path = c.req.query('path')
+  if (!path || path.trim().length === 0) {
+    return err(c, 400, 'VALIDATION_ERROR', 'Query parameter path is required')
+  }
+  const row = await fileQueries.findFileByPath(id, path)
+  return ok(c, { path, content: row?.content ?? '', found: Boolean(row) })
+})
+
 routes.post(
   '/projects/:id/files/batch',
   zValidator('json', InternalProjectFileBatchSchema),

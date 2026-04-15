@@ -16,6 +16,7 @@ export type AgentType =
   // Phase 3 — Design Mode
   | 'generate_frame'
   // Phase 4 — Build (Dev Mode)
+  | 'skeleton'
   | 'schema_generator'
   | 'api_generator'
   | 'backend'
