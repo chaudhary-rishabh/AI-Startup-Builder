@@ -9,7 +9,7 @@ import { pineconeNamespaceForUser } from '../db/queries/ragNamespaces.queries.js
 import { pineconeService } from '../services/pinecone.service.js'
 
 import type { QueryParams } from '../services/pinecone.service.js'
-import { createBm25EncoderForDocument } from '../services/bm25Encoder.service.js'
+import { bm25EncoderService } from '../services/bm25Encoder.service.js'
 import { runQueryPipeline } from '../services/queryPipeline.service.js'
 
 const query = new Hono()
@@ -110,9 +110,7 @@ query.post('/rag/bm25-query', async (c) => {
   const namespace = pineconeNamespaceForUser(userId)
   const queryEmbedding = await embedSingleText(body.query)
 
-  const enc = createBm25EncoderForDocument()
-  await enc.fitAndEncode([body.query])
-  const sparseVec = await enc.encodeQuery(body.query)
+  const sparseVec = await bm25EncoderService.encodeQuery(body.query)
 
   if (sparseVec.indices.length === 0) {
     return ok(c, {

@@ -55,6 +55,7 @@ const m = vi.hoisted(() => ({
   embedSingleText: vi.fn(),
   queryHybrid: vi.fn(),
   rerank: vi.fn(),
+  encodeQuery: vi.fn(),
 }))
 
 vi.mock('../../src/lib/redis.js', () => ({
@@ -82,6 +83,12 @@ vi.mock('../../src/services/pinecone.service.js', () => ({
   },
 }))
 
+vi.mock('../../src/services/bm25Encoder.service.js', () => ({
+  bm25EncoderService: {
+    encodeQuery: m.encodeQuery,
+  },
+}))
+
 vi.mock('cohere-ai', () => ({
   CohereClient: vi.fn().mockImplementation(() => ({
     rerank: m.rerank,
@@ -102,6 +109,7 @@ describe('runQueryPipeline', () => {
       updatedAt: new Date(),
     })
     m.embedSingleText.mockResolvedValue(new Array(8).fill(0.1))
+    m.encodeQuery.mockResolvedValue({ indices: [1, 2], values: [0.5, 0.2] })
     m.queryHybrid.mockImplementation(async (params: { alpha?: number }) => {
       if (params.alpha === 0.1) {
         return [mkMatch('bm', { enrichedText: 'bonly' })]
@@ -164,6 +172,14 @@ describe('runQueryPipeline', () => {
     expect(r.chunks.length).toBeGreaterThan(0)
   })
 
+  it('calls bm25EncoderService.encodeQuery for sparse query', async () => {
+    await runQueryPipeline({
+      userId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+      query: 'query with bm25 terms',
+    })
+    expect(m.encodeQuery).toHaveBeenCalledWith('query with bm25 terms')
+  })
+
   it('passes filterDocIds to Pinecone', async () => {
     await runQueryPipeline({
       userId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
@@ -208,5 +224,15 @@ describe('runQueryPipeline', () => {
   it('caches successful results in Redis', async () => {
     await runQueryPipeline({ userId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', query: 'cacheable query phrase' })
     expect(m.redisSetex).toHaveBeenCalled()
+  })
+
+  it('BM25 empty sparse vector keeps dense-only flow', async () => {
+    m.encodeQuery.mockResolvedValueOnce({ indices: [], values: [] })
+    const r = await runQueryPipeline({
+      userId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+      query: 'stopwords only query',
+    })
+    expect(r.denseResultCount).toBeGreaterThan(0)
+    expect(r.bm25ResultCount).toBe(0)
   })
 })

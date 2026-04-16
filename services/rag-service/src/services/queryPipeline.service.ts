@@ -8,7 +8,7 @@ import { AppError } from '../lib/errors.js'
 import { logger } from '../lib/logger.js'
 import { getRedis } from '../lib/redis.js'
 import { embedSingleText } from './embedder.service.js'
-import { createBm25EncoderForDocument } from './bm25Encoder.service.js'
+import { bm25EncoderService } from './bm25Encoder.service.js'
 import { pineconeService } from './pinecone.service.js'
 
 import type { QueryParams, QueryResult } from './pinecone.service.js'
@@ -182,9 +182,7 @@ export async function runQueryPipeline(input: QueryPipelineInput): Promise<Query
 
   let bm25Results: QueryResult[] = []
   try {
-    const bm25 = createBm25EncoderForDocument()
-    await bm25.fitAndEncode([input.query])
-    const querySparseVec = await bm25.encodeQuery(input.query)
+    const querySparseVec = await bm25EncoderService.encodeQuery(input.query)
 
     if (querySparseVec.indices.length > 0) {
       try {
