@@ -1,10 +1,10 @@
-import { and, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, sql } from 'drizzle-orm'
 
 import { coupons } from '../schema.js'
 import { getDb } from '../../lib/db.js'
 import { AppError } from '../../lib/errors.js'
 
-import type { Coupon } from '../schema.js'
+import type { Coupon, NewCoupon } from '../schema.js'
 
 export async function findCouponByCode(code: string): Promise<Coupon | undefined> {
   const db = getDb()
@@ -33,4 +33,16 @@ export async function findCouponByStripeId(stripeCouponId: string): Promise<Coup
     .where(eq(coupons.stripeCouponId, stripeCouponId))
     .limit(1)
   return row
+}
+
+export async function createCoupon(data: NewCoupon): Promise<Coupon> {
+  const db = getDb()
+  const [row] = await db.insert(coupons).values(data).returning()
+  if (!row) throw new Error('createCoupon: insert returned no row')
+  return row
+}
+
+export async function listCoupons(): Promise<Coupon[]> {
+  const db = getDb()
+  return db.select().from(coupons).orderBy(desc(coupons.createdAt))
 }

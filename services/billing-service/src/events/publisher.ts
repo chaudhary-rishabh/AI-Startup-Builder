@@ -60,3 +60,30 @@ export async function publishTokenBudgetWarning(payload: {
 }): Promise<void> {
   await publish('token.budget.warning', payload)
 }
+
+export async function publishSubscriptionPaymentFailed(payload: {
+  userId: string
+  amountCents: number
+  currency: string
+  invoiceUrl: string | null
+  nextAttemptAt: string | null
+}): Promise<void> {
+  await publish('subscription.payment_failed', payload)
+}
+
+export async function publishTrialWillEnd(payload: {
+  userId: string
+  trialEnd: string
+  plan: string
+}): Promise<void> {
+  await publish('subscription.trial_will_end', payload)
+}
+
+export async function publishSubscriptionActivated(payload: {
+  userId: string
+  plan: string
+  billingCycle: string
+  currentPeriodEnd: string
+}): Promise<void> {
+  await publish('subscription.activated', payload)
+}

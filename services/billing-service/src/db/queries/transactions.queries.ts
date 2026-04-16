@@ -36,6 +36,12 @@ export async function findTransactionByStripeEventId(
   return row
 }
 
+export async function findTransactionById(id: string): Promise<Transaction | undefined> {
+  const db = getDb()
+  const [row] = await db.select().from(transactions).where(eq(transactions.id, id)).limit(1)
+  return row
+}
+
 export async function findTransactionsByUserId(
   userId: string,
   opts: { page?: number; limit?: number },

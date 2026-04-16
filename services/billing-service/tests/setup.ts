@@ -78,6 +78,18 @@ vi.mock('stripe', () => {
         id,
         ...input,
       })),
+      retrieve: vi.fn(async (id: string) => ({
+        id,
+        status: 'active',
+        metadata: { userId: '00000000-0000-0000-0000-000000000001' },
+        items: {
+          data: [{ price: { id: process.env['STRIPE_PRO_MONTHLY_PRICE_ID'] ?? 'price_pro_monthly' } }],
+        },
+        current_period_start: Math.floor(Date.now() / 1000),
+        current_period_end: Math.floor(Date.now() / 1000) + 2_592_000,
+        cancel_at_period_end: false,
+        trial_end: null,
+      })),
     }
 
     invoices = {

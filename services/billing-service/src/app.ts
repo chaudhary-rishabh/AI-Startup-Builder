@@ -29,12 +29,12 @@ export function createApp(): Hono {
   app.use('*', requestIdMiddleware)
 
   app.route('/billing', plansRoutes)
+  app.route('/billing', webhookRoutes)
   app.route('/billing', subscriptionRoutes)
   app.route('/billing', checkoutRoutes)
   app.route('/billing', invoicesRoutes)
   app.route('/billing', tokenUsageRoutes)
   app.route('/billing', couponsRoutes)
-  app.route('/billing', webhookRoutes)
   app.route('/billing', adminRoutes)
   app.route('/internal', internalRoutes)
 

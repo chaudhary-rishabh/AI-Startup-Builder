@@ -4,6 +4,7 @@ import {
   currentMonthDateString,
   getCurrentMonthUsage,
   getOrCreateMonthlyUsage,
+  updateTokenLimit as updateTokenLimitInDb,
 } from '../db/queries/tokenUsage.queries.js'
 import { env } from '../config/env.js'
 import { publishTokenBudgetWarning } from '../events/publisher.js'
@@ -135,4 +136,11 @@ export async function getTokenBudget(userId: string): Promise<TokenBudgetView> {
 
   await redis.setex(cacheKey, env.TOKEN_BUDGET_CACHE_TTL, JSON.stringify(view))
   return view
+}
+
+export async function updateTokenLimit(userId: string, tokensLimit: bigint): Promise<void> {
+  await updateTokenLimitInDb(userId, tokensLimit)
+  const redis = getRedis()
+  await redis.del(`billing:budget:${userId}`)
+  await redis.del(`billing:subscription:${userId}`)
 }
