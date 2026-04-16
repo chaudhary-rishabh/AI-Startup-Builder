@@ -3,14 +3,28 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { randomUUID } from 'node:crypto'
 
 export function ok<T>(c: Context, data: T): Response {
+  const requestId = (c.get('requestId' as never) as string | undefined) ?? randomUUID()
   return c.json(
     {
       success: true,
       data,
-      requestId: randomUUID(),
+      requestId,
       timestamp: new Date().toISOString(),
     },
     200,
+  )
+}
+
+export function accepted<T>(c: Context, data: T): Response {
+  const requestId = (c.get('requestId' as never) as string | undefined) ?? randomUUID()
+  return c.json(
+    {
+      success: true,
+      data,
+      requestId,
+      timestamp: new Date().toISOString(),
+    },
+    202,
   )
 }
 
@@ -20,10 +34,11 @@ export function err(
   code: string,
   message: string,
 ): Response {
+  const traceId = (c.get('requestId' as never) as string | undefined) ?? randomUUID()
   return c.json(
     {
       success: false,
-      error: { code, message, traceId: randomUUID(), service: 'billing-service' },
+      error: { code, message, traceId, service: 'billing-service' },
     },
     status as ContentfulStatusCode,
   )
