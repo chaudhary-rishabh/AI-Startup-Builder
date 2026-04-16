@@ -271,6 +271,14 @@ describe('query and namespace routes (unit)', () => {
     app = createApp()
     userId = randomUUID()
     token = await signTestAccessToken({ userId, plan: 'pro' })
+    ns.getNamespaceStats.mockResolvedValue({
+      userId,
+      pineconeNamespace: `user_${userId.replace(/-/g, '')}`,
+      docCount: 2,
+      totalChunks: 4,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
   })
 
   it('POST /rag/query returns matches', async () => {
@@ -303,6 +311,16 @@ describe('query and namespace routes (unit)', () => {
       headers: { Authorization: `Bearer ${token}` },
     })
     expect(res.status).toBe(200)
+  })
+
+  it('GET /rag/namespace returns usage payload', async () => {
+    const res = await app.request('http://localhost/rag/namespace', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    expect(res.status).toBe(200)
+    const j = (await res.json()) as { data: { namespace: string; docLimit: number } }
+    expect(j.data.namespace).toContain('user_')
+    expect(j.data.docLimit).toBeGreaterThan(0)
   })
 })
 

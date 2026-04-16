@@ -17,12 +17,17 @@ vi.mock('@aws-sdk/client-s3', () => {
         if (cmd.constructor.name === 'GetObjectCommand') {
           return Promise.resolve({ Body: buf })
         }
+        if (cmd.constructor.name === 'ListObjectsV2Command') {
+          return Promise.resolve({ Contents: [], IsTruncated: false })
+        }
         return Promise.resolve({})
       }),
     })),
     GetObjectCommand: vi.fn(),
     PutObjectCommand: vi.fn(),
     DeleteObjectCommand: vi.fn(),
+    ListObjectsV2Command: vi.fn(),
+    DeleteObjectsCommand: vi.fn(),
   }
 })
 

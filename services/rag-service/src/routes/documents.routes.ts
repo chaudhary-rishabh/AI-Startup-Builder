@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 
 import { Hono } from 'hono'
+import { z } from 'zod'
 
 import { enqueueIngestJob } from '../queues/embed.queue.js'
 import {
@@ -25,6 +26,7 @@ import { getRedis } from '../lib/redis.js'
 import { logger } from '../lib/logger.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { pineconeService } from '../services/pinecone.service.js'
+import { ingestUrl } from '../services/urlIngestion.service.js'
 
 const SUPPORTED_MIMES = new Set([
   'application/pdf',
@@ -72,6 +74,59 @@ async function rateLimitOk(
 const documents = new Hono()
 
 documents.use('*', requireAuth)
+
+const ingestUrlBodySchema = z.object({
+  url: z.string().url().max(2000),
+  maxDepth: z.number().int().min(1).max(3).default(1),
+  customInstructions: z.string().max(500).optional(),
+})
+
+documents.post('/rag/ingest-url', async (c) => {
+  const userId = c.get('userId')
+  const plan = c.get('userPlan')
+  if (!(await rateLimitOk(userId, 'ingest-url', 3, 60))) {
+    return err(c, 429, 'RATE_LIMIT', 'Too many URL ingest requests. Try again later.')
+  }
+
+  const json = (await c.req.json().catch(() => null)) as unknown
+  const parsed = ingestUrlBodySchema.safeParse(json)
+  if (!parsed.success) {
+    return err(c, 422, 'VALIDATION_ERROR', 'Invalid request body')
+  }
+
+  const body = parsed.data
+  const indexedCount = await countDocumentsByUser(userId, 'indexed')
+  const limit = getDocLimitForPlan(plan)
+  if (indexedCount >= limit) {
+    return err(c, 422, 'RAG_DOCUMENT_LIMIT_EXCEEDED', 'Document limit reached for your plan')
+  }
+
+  const result = await ingestUrl({
+    url: body.url,
+    maxDepth: body.maxDepth,
+    userId,
+    ...(body.customInstructions !== undefined ? { customInstructions: body.customInstructions } : {}),
+  })
+
+  const estimatedMs = 8000 + (body.maxDepth > 1 ? 20_000 : 0)
+  if (result.status === 'indexed') {
+    return ok(c, {
+      docId: result.docId,
+      url: result.url,
+      status: 'indexed',
+      estimatedMs: 0,
+      message: 'URL content already indexed for this user.',
+    })
+  }
+
+  return accepted(c, {
+    docId: result.docId,
+    url: result.url,
+    status: 'crawling',
+    estimatedMs,
+    message: 'URL ingestion started. Check document status via GET /rag/documents.',
+  })
+})
 
 documents.post('/rag/documents', async (c) => {
   const userId = c.get('userId')

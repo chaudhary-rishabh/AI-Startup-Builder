@@ -1,6 +1,8 @@
 import {
   DeleteObjectCommand,
+  DeleteObjectsCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3'
@@ -62,4 +64,34 @@ export async function deleteFromS3(key: string): Promise<void> {
       Key: key,
     }),
   )
+}
+
+const DELETE_BATCH = 1000
+
+export async function deleteUserRagS3Prefix(userId: string): Promise<void> {
+  const prefix = `rag/${userId}/`
+  let continuationToken: string | undefined
+  do {
+    const listed = await s3.send(
+      new ListObjectsV2Command({
+        Bucket: env.S3_BUCKET,
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      }),
+    )
+    const keys = (listed.Contents ?? [])
+      .map((o) => o.Key)
+      .filter((k): k is string => typeof k === 'string' && k.length > 0)
+    for (let i = 0; i < keys.length; i += DELETE_BATCH) {
+      const batch = keys.slice(i, i + DELETE_BATCH)
+      if (batch.length === 0) continue
+      await s3.send(
+        new DeleteObjectsCommand({
+          Bucket: env.S3_BUCKET,
+          Delete: { Objects: batch.map((Key) => ({ Key })) },
+        }),
+      )
+    }
+    continuationToken = listed.IsTruncated ? listed.NextContinuationToken : undefined
+  } while (continuationToken)
 }
