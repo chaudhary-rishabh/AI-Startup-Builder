@@ -8,6 +8,13 @@
       "when": 1776224242032,
       "tag": "0000_bouncy_network",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776308823271,
+      "tag": "0001_jittery_gateway",
+      "breakpoints": true
     }
   ]
 }

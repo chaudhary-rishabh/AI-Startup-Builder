@@ -15,6 +15,13 @@
       "when": 1775870921401,
       "tag": "0001_ambitious_butterfly",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776308804653,
+      "tag": "0002_grey_dracula",
+      "breakpoints": true
     }
   ]
 }

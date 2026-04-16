@@ -9,6 +9,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  varchar,
 } from 'drizzle-orm/pg-core'
 
 /**
@@ -46,6 +47,15 @@ export const projects = projectsSchema.table(
     })
       .notNull()
       .default('design'),
+    /** autopilot | copilot | manual — set at project creation */
+    buildMode: varchar('build_mode', { length: 10 })
+      .notNull()
+      .default('copilot'),
+    /** { scale, platform, primaryColor, architecture, brandFeel, allowAiDecide } */
+    userPreferences: jsonb('user_preferences')
+      .notNull()
+      .default({} as Record<string, unknown>),
+    copilotQuestionsAnswered: boolean('copilot_questions_answered').notNull().default(false),
     phaseProgress: jsonb('phase_progress')
       .notNull()
       .default({} as Record<string, unknown>),
@@ -111,6 +121,7 @@ export const designCanvas = projectsSchema.table(
       .notNull()
       .references(() => projects.id, { onDelete: 'cascade' })
       .unique(),
+    /** HTML prototype screens: [{ screenName, html, route, generatedAt }] */
     canvasData: jsonb('canvas_data').notNull().default([] as unknown[]),
     pages: jsonb('pages').notNull().default([] as unknown[]),
     designTokens: jsonb('design_tokens').notNull().default({} as Record<string, unknown>),

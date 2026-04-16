@@ -35,15 +35,16 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     const redisUrl = `redis://${redisContainer.getHost()}:${redisContainer.getMappedPort(6379)}`
 
     const __dirname = path.dirname(fileURLToPath(import.meta.url))
-    const migrationSql = fs.readFileSync(
-      path.join(__dirname, '../src/db/migrations/0000_bouncy_network.sql'),
-      'utf8',
-    )
+    const migrationsDir = path.join(__dirname, '../src/db/migrations')
+    const migrationFiles = ['0000_bouncy_network.sql', '0001_jittery_gateway.sql']
     const client = new pg.Client({ connectionString: databaseUrl })
     await client.connect()
-    for (const chunk of migrationSql.split('--> statement-breakpoint')) {
-      const stmt = chunk.trim()
-      if (stmt.length > 0) await client.query(stmt)
+    for (const file of migrationFiles) {
+      const migrationSql = fs.readFileSync(path.join(migrationsDir, file), 'utf8')
+      for (const chunk of migrationSql.split('--> statement-breakpoint')) {
+        const stmt = chunk.trim()
+        if (stmt.length > 0) await client.query(stmt)
+      }
     }
     await client.end()
 

@@ -15,6 +15,13 @@
       "when": 1775960637442,
       "tag": "0001_mushy_arclight",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776308786078,
+      "tag": "0002_warm_phantom_reporter",
+      "breakpoints": true
     }
   ]
 }

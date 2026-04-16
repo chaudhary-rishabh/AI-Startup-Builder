@@ -1,5 +1,14 @@
 import { sql } from 'drizzle-orm'
-import { index, jsonb, pgSchema, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import {
+  index,
+  jsonb,
+  pgSchema,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  varchar,
+} from 'drizzle-orm/pg-core'
 
 /**
  * Inlined like auth-service so drizzle-kit can load this file without pulling
@@ -27,6 +36,9 @@ export const userProfiles = usersSchema.table(
       .notNull()
       .default({} as Record<string, unknown>),
     themePrefs: jsonb('theme_prefs').notNull().default({} as Record<string, unknown>),
+    /** profile | idea | plan | complete — lightweight onboarding pointer */
+    onboardingStep: varchar('onboarding_step', { length: 50 }).notNull().default('profile'),
+    onboardingData: jsonb('onboarding_data').notNull().default({} as Record<string, unknown>),
     ...timestampColumns,
   },
   (t) => ({
