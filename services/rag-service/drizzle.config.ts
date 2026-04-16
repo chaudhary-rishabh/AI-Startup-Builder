@@ -1,14 +1,12 @@
 import { defineConfig } from 'drizzle-kit'
-
-const databaseUrl =
-  process.env['DATABASE_URL'] ?? 'postgresql://postgres:devpassword@localhost:5432/aistartup'
+import { env } from './src/config/env'
 
 export default defineConfig({
   schema: './src/db/schema.ts',
-  out: './src/db/migrations',
+  out: './drizzle',
   dialect: 'postgresql',
-  dbCredentials: { url: databaseUrl },
-  tablesFilter: ['rag_namespaces'],
+  dbCredentials: { url: process.env['DATABASE_URL'] ?? env.DATABASE_URL },
+  schemaFilter: ['ai'],
   verbose: true,
   strict: true,
 })

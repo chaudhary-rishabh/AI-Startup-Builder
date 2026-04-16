@@ -14,7 +14,11 @@ describe('createApp', () => {
     const app = createApp()
     const res = await app.request('http://localhost/health')
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ status: 'ok', service: 'rag-service' })
+    const body = (await res.json()) as { status: string; service: string; version: string; timestamp: string }
+    expect(body.status).toBe('ok')
+    expect(body.service).toBe('rag-service')
+    expect(body.version).toBe('1.0.0')
+    expect(typeof body.timestamp).toBe('string')
   })
 })
 

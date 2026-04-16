@@ -72,9 +72,9 @@ export async function updateDocumentStatus(
   id: string,
   data: {
     status: string
-    chunkCount?: number
-    indexedAt?: Date
-    errorMessage?: string
+    chunkCount?: number | null
+    indexedAt?: Date | null
+    errorMessage?: string | null
   },
 ): Promise<RagDocument | undefined> {
   const db = getDb()
@@ -117,6 +117,11 @@ export async function findAllIndexedDocumentsForUser(userId: string): Promise<Ra
     .from(ragDocuments)
     .where(and(eq(ragDocuments.userId, userId), eq(ragDocuments.status, 'indexed')))
     .orderBy(desc(ragDocuments.createdAt))
+}
+
+export async function findAllDocumentsForUser(userId: string): Promise<RagDocument[]> {
+  const db = getDb()
+  return db.select().from(ragDocuments).where(eq(ragDocuments.userId, userId)).orderBy(desc(ragDocuments.createdAt))
 }
 
 export async function findDocumentFullText(
