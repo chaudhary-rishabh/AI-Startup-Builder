@@ -231,18 +231,18 @@ type FilePromptFn = (
   file: FileSpec,
   priorFilesContent: Array<{ path: string; content: string }>,
   context: ProjectContext,
-) => { system: string; user: string }
+) => { system: string; user: string } | Promise<{ system: string; user: string }>
 
-function resolveFilePrompt(
+async function resolveFilePrompt(
   agentType: AgentType,
   file: FileSpec,
   priorForAgent: Array<{ path: string; content: string }>,
   context: ProjectContext,
-): { system: string; user: string } {
+): Promise<{ system: string; user: string }> {
   const agent = getAgent(agentType)
   const fn = (agent as { buildFilePrompt?: FilePromptFn }).buildFilePrompt
   if (typeof fn === 'function') {
-    return fn.call(agent, file, priorForAgent, context)
+    return await Promise.resolve(fn.call(agent, file, priorForAgent, context))
   }
   return buildGenericFilePrompt(file, priorForAgent, context)
 }
@@ -415,7 +415,7 @@ export async function orchestratePhase4(
       const priorForAgent =
         agentType === 'schema_generator' ? [...batchGeneratedPrior] : dependencyPrior
 
-      const prompt = resolveFilePrompt(agentType as AgentType, file, priorForAgent, context)
+      const prompt = await resolveFilePrompt(agentType as AgentType, file, priorForAgent, context)
       let fileContent = ''
       const stream = await client.messages.stream({
         model,

@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import type { AgentType } from '@repo/types'
 
-// Exhaustive list — must be kept in sync with AgentType union in @repo/types
+// Exhaustive list (18 agents) — must be kept in sync with AgentType union in @repo/types
 const agentTypeValues: [AgentType, ...AgentType[]] = [
   'idea_analyzer',
   'market_research',

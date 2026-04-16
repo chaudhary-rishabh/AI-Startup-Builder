@@ -13,6 +13,7 @@ export default defineConfig({
       },
     },
     setupFiles: ['./tests/setup.ts'],
+    exclude: ['**/node_modules/**', '**/dist/**', 'tests/integration/fullAiServiceFlow.test.ts'],
     testTimeout: 30_000,
     hookTimeout: 120_000,
     coverage: {

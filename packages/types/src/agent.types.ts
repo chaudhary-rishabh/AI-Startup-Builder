@@ -2,7 +2,7 @@ import type { CanvasElement, CanvasPage } from './project.types.js'
 
 export type AgentModel = 'claude-sonnet-4-5' | 'claude-opus-4-5'
 
-// All 17 agent types across 6 phases — must stay in sync with AgentType in validators
+// All 18 agent types across 6 phases — must stay in sync with AgentType in validators
 export type AgentType =
   // Phase 1 — Discovery & Validation
   | 'idea_analyzer'

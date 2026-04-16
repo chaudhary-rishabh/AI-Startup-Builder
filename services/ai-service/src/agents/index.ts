@@ -13,6 +13,7 @@ import { FeedbackAnalyzerAgent } from './phase6/feedbackAnalyzer.agent.js'
 import { GrowthStrategyAgent } from './phase6/growthStrategy.agent.js'
 import { ApiGeneratorAgent } from './phase4/apiGenerator.agent.js'
 import { BackendAgent } from './phase4/backendAgent.agent.js'
+import { FrontendAgent } from './phase4/frontendAgent.agent.js'
 import { IntegrationAgent } from './phase4/integrationAgent.agent.js'
 import { SchemaGeneratorAgent } from './phase4/schemaGenerator.agent.js'
 import { SkeletonAgent } from './phase4/skeletonAgent.agent.js'
@@ -34,6 +35,7 @@ export function registerAllAgents(): void {
   registerAgent('api_generator', () => new ApiGeneratorAgent())
   registerAgent('backend', () => new BackendAgent())
   registerAgent('integration', () => new IntegrationAgent())
+  registerAgent('frontend', () => new FrontendAgent())
   registerAgent('testing', () => new TestingAgent())
   registerAgent('cicd', () => new CicdAgent())
   registerAgent('analytics', () => new AnalyticsAgent())
