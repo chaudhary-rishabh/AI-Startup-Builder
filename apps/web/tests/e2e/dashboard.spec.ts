@@ -115,13 +115,13 @@ test('3-dot menu opens on click', async ({ page }) => {
 
 test('New project modal opens from sidebar button', async ({ page }) => {
   await page.goto('/dashboard')
-  await page.locator('aside').getByRole('button', { name: /\+ new project/i }).first().click()
+  await page.locator('aside button:visible').filter({ hasText: '+ New Project' }).first().click()
   await expect(page.getByText('Create New Project')).toBeVisible()
 })
 
 test('Build mode selector shown in modal', async ({ page }) => {
   await page.goto('/dashboard')
-  await page.getByRole('button', { name: /\+ new project/i }).first().click()
+  await page.locator('aside button:visible').filter({ hasText: '+ New Project' }).first().click()
   await expect(page.getByRole('radio', { name: /autopilot/i })).toBeVisible()
   await expect(page.getByRole('radio', { name: /copilot/i })).toBeVisible()
   await expect(page.getByRole('radio', { name: /manual/i })).toBeVisible()

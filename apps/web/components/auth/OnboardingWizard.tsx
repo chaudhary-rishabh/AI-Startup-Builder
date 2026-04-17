@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import * as Select from '@radix-ui/react-select'
 
 import api from '@/lib/axios'
@@ -15,7 +15,10 @@ interface IdeaDraft {
 }
 
 export function OnboardingWizard(): JSX.Element {
-  const [step, setStep] = useState(1)
+  const searchParams = useSearchParams()
+  const requestedStep = Number(searchParams.get('step') ?? 1)
+  const initialStep = Number.isFinite(requestedStep) ? Math.min(3, Math.max(1, requestedStep)) : 1
+  const [step, setStep] = useState(initialStep)
   const [name, setName] = useState('')
   const [role, setRole] = useState<'FOUNDER' | 'DESIGNER' | 'DEVELOPER' | 'OTHER'>('FOUNDER')
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC')
@@ -26,12 +29,15 @@ export function OnboardingWizard(): JSX.Element {
   const stepLabels = useMemo(() => ['Profile', 'Your Idea', 'Choose Plan'], [])
 
   const skipToDashboard = (): void => {
-    router.push('/dashboard')
+    window.location.assign('/dashboard')
   }
 
   const submitProfile = async (): Promise<void> => {
-    await api.patch('/users/profile', { name, role, timezone, onboardingDone: false })
-    setStep(2)
+    try {
+      await api.patch('/users/profile', { name, role, timezone, onboardingDone: false })
+    } finally {
+      setStep(2)
+    }
   }
 
   const continueIdea = (): void => {
@@ -95,9 +101,9 @@ export function OnboardingWizard(): JSX.Element {
               )
             })}
           </div>
-          <button type="button" onClick={skipToDashboard} className="ml-4 text-xs text-muted underline">
+          <a href="/dashboard" onClick={skipToDashboard} className="ml-4 text-xs text-muted underline">
             Skip
-          </button>
+          </a>
         </div>
 
         {step === 1 ? (
