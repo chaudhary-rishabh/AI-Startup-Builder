@@ -27,12 +27,12 @@ export function ShellLayout({ children }: { children: React.ReactNode }): JSX.El
     <div className="flex h-screen overflow-hidden bg-bg">
       <Sidebar mobileOpen={mobileSidebarOpen} onCloseMobile={() => setMobileSidebarOpen(false)} />
       <ResizeHandle />
-      <main className={mainClassName}>
+      <main data-testid="main-content" className={mainClassName}>
         <button
           type="button"
           onClick={() => setMobileSidebarOpen(true)}
           className="fixed left-3 top-3 z-20 rounded-md border border-divider bg-card p-2 shadow-sm md:hidden"
-          aria-label="Open sidebar"
+          aria-label="Open navigation menu"
         >
           <Menu size={16} />
         </button>

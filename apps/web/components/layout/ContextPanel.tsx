@@ -5,7 +5,7 @@ import { ChevronRight } from 'lucide-react'
 
 import { useUIStore } from '@/store/uiStore'
 
-export function ContextPanel(): JSX.Element {
+export function ContextPanel({ children }: { children?: React.ReactNode }): JSX.Element {
   const open = useUIStore((state) => state.contextPanelOpen)
   const setContextPanelOpen = useUIStore((state) => state.setContextPanelOpen)
 
@@ -30,7 +30,7 @@ export function ContextPanel(): JSX.Element {
           </button>
           <div className="h-full p-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-muted">Agents</p>
-            <p className="mt-3 text-xs text-muted">Phase status appears here</p>
+            {children ?? <p className="mt-3 text-xs text-muted">Phase status appears here</p>}
           </div>
         </motion.aside>
       ) : null}

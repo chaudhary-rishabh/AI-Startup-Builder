@@ -43,13 +43,13 @@ export function TopBar({ projectId, projectName, currentPhase, phaseProgress }: 
             <button
               key={label}
               type="button"
-              title={label}
+              title={complete ? label : active ? label : 'Complete previous phases first'}
               className={`flex h-3 w-3 items-center justify-center rounded-full ${
                 complete
-                  ? 'bg-success'
+                  ? 'cursor-pointer bg-success'
                   : active
                     ? 'bg-brand shadow-[0_0_0_3px_rgba(139,111,71,0.2)]'
-                    : 'border border-muted bg-divider'
+                    : 'cursor-default border border-muted bg-divider'
               }`}
               onClick={() => {
                 if (complete) {
