@@ -55,7 +55,148 @@ export const handlers = [
     }),
   ),
   http.patch(`${API_BASE}/users/profile`, async () => HttpResponse.json({ data: { updated: true } })),
-  http.post(`${API_BASE}/projects`, async () => HttpResponse.json({ data: { id: 'project-1' } })),
+  http.get(`${API_BASE}/projects`, async () =>
+    HttpResponse.json({
+      data: {
+        projects: [
+          {
+            id: 'proj-1',
+            userId: 'u1',
+            name: 'RestaurantIQ',
+            emoji: '🍽️',
+            description: 'AI restaurant inventory',
+            currentPhase: 2,
+            status: 'active',
+            isStarred: true,
+            mode: 'design',
+            buildMode: 'copilot',
+            phaseProgress: { '1': 'complete', '2': 'active' },
+            lastActiveAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: 'proj-2',
+            userId: 'u1',
+            name: 'HealthAI Coach',
+            emoji: '🏥',
+            description: 'Fitness coaching app',
+            currentPhase: 1,
+            status: 'active',
+            isStarred: false,
+            mode: 'design',
+            buildMode: 'autopilot',
+            phaseProgress: { '1': 'active' },
+            lastActiveAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        total: 2,
+        page: 1,
+        limit: 20,
+      },
+    }),
+  ),
+  http.get(`${API_BASE}/projects/:id`, async ({ params }) =>
+    HttpResponse.json({
+      data: {
+        id: String(params.id),
+        userId: 'u1',
+        name: 'RestaurantIQ',
+        emoji: '🍽️',
+        description: 'AI restaurant inventory',
+        currentPhase: 2,
+        status: 'active',
+        isStarred: true,
+        mode: 'design',
+        buildMode: 'copilot',
+        phaseProgress: { '1': 'complete', '2': 'active' },
+        lastActiveAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      },
+    }),
+  ),
+  http.post(`${API_BASE}/projects`, async () =>
+    HttpResponse.json(
+      {
+        data: {
+          id: 'proj-new',
+          userId: 'u1',
+          name: 'New Project',
+          emoji: '🚀',
+          description: null,
+          currentPhase: 1,
+          status: 'active',
+          isStarred: false,
+          mode: 'design',
+          buildMode: 'copilot',
+          phaseProgress: { '1': 'active' },
+          lastActiveAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+        },
+      },
+      { status: 201 },
+    ),
+  ),
+  http.patch(`${API_BASE}/projects/:id`, async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({
+      data: {
+        id: String(params.id),
+        userId: 'u1',
+        name: String(body.name ?? 'RestaurantIQ'),
+        emoji: String(body.emoji ?? '🍽️'),
+        description: body.description ?? 'AI restaurant inventory',
+        currentPhase: 2,
+        status: String(body.status ?? 'active'),
+        isStarred: Boolean(body.isStarred ?? true),
+        mode: 'design',
+        buildMode: 'copilot',
+        phaseProgress: { '1': 'complete', '2': 'active' },
+        lastActiveAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      },
+    })
+  }),
+  http.delete(`${API_BASE}/projects/:id`, async () => HttpResponse.json({ data: { message: 'Project deleted' } })),
+  http.post(`${API_BASE}/projects/:id/duplicate`, async ({ params }) =>
+    HttpResponse.json({
+      data: {
+        id: `${params.id}-copy`,
+        userId: 'u1',
+        name: 'RestaurantIQ Copy',
+        emoji: '🍽️',
+        description: 'AI restaurant inventory',
+        currentPhase: 1,
+        status: 'active',
+        isStarred: false,
+        mode: 'design',
+        buildMode: 'copilot',
+        phaseProgress: { '1': 'active' },
+        lastActiveAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      },
+    }),
+  ),
+  http.post(`${API_BASE}/projects/:id/advance-phase`, async ({ request }) => {
+    const body = (await request.json()) as { targetPhase?: number }
+    return HttpResponse.json({
+      data: {
+        previousPhase: (body.targetPhase ?? 2) - 1,
+        currentPhase: body.targetPhase ?? 2,
+      },
+    })
+  }),
+  http.get(`${API_BASE}/rag/namespace`, async () =>
+    HttpResponse.json({
+      data: {
+        namespace: 'user_test',
+        docCount: 2,
+        docLimit: 5,
+        status: 'active',
+        lastIndexedAt: new Date().toISOString(),
+      },
+    }),
+  ),
   http.post(`${API_BASE}/billing/checkout`, async () =>
     HttpResponse.json({ data: { checkoutUrl: 'https://checkout.stripe.com/test' } }),
   ),

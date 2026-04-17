@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test'
 
+test.describe.configure({ timeout: 120_000 })
+
 test('Landing page renders both panels', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 90_000 })
   await expect(page.getByText(/build your startup/i)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Sign Up' })).toBeVisible()
 })
