@@ -186,6 +186,37 @@ export const handlers = [
       },
     })
   }),
+  http.post(`${API_BASE}/ai/runs`, async () =>
+    HttpResponse.json({
+      data: {
+        runId: 'run-test-1',
+        streamUrl: '/ai/runs/run-test-1/stream',
+        status: 'running',
+      },
+    }),
+  ),
+  http.get(`${API_BASE}/ai/runs/run-test-1`, async () =>
+    HttpResponse.json({
+      data: {
+        runId: 'run-test-1',
+        projectId: 'proj-1',
+        phase: 1,
+        agentType: 'idea_analyzer',
+        model: 'gpt',
+        status: 'completed',
+        tokensUsed: 1842,
+        durationMs: 8240,
+        output: {
+          problemStatement: 'Restaurants waste 30% of inventory weekly',
+          solution: 'AI-powered inventory prediction',
+          icp: 'Independent restaurant owners, 20-50 seats',
+        },
+        createdAt: new Date().toISOString(),
+      },
+    }),
+  ),
+  http.post(`${API_BASE}/ai/runs/run-test-1/cancel`, async () => HttpResponse.json({ data: { status: 'cancelled' } })),
+  http.post(`${API_BASE}/projects/:id/copilot-preferences`, async () => HttpResponse.json({ data: { saved: true } })),
   http.get(`${API_BASE}/rag/namespace`, async () =>
     HttpResponse.json({
       data: {

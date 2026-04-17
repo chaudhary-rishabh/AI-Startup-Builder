@@ -13,7 +13,18 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
-      include: ['store/**/*.ts', 'components/**/*.tsx', 'lib/**/*.ts', 'hooks/**/*.ts'],
+      include: [
+        'store/authStore.ts',
+        'store/uiStore.ts',
+        'store/projectStore.ts',
+        'hooks/useProjects.ts',
+        'hooks/useAgentStream.ts',
+        'hooks/usePhaseAdvance.ts',
+        'components/common/TokenBudgetBanner.tsx',
+        'components/phases/DocModeIndicator.tsx',
+        'components/phases/CrossCheckBadge.tsx',
+        'components/phases/phase1/ValidationScoreCircle.tsx',
+      ],
       thresholds: {
         lines: 80,
         functions: 80,

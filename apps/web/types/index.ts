@@ -26,6 +26,32 @@ export interface Project {
 
 export type BuildMode = 'autopilot' | 'copilot' | 'manual'
 
+export interface Competitor {
+  name: string
+  keyFeatures: string
+  price: string
+  gap: string
+}
+
+export interface Phase1Output {
+  ideaAnalysis?: {
+    problemStatement: string
+    solution: string
+    icp: string
+  }
+  marketResearch?: {
+    competitors: Competitor[]
+    marketGap: string
+    pricingSuggestion: string
+  }
+  validation?: {
+    demandScore: number
+    riskLevel: 'Low' | 'Medium' | 'High'
+    verdict: 'Yes' | 'No' | 'Pivot'
+    reasoning: string
+  }
+}
+
 interface SSEEventBase {
   type: string
   runId: string
