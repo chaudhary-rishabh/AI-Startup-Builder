@@ -37,36 +37,54 @@ if (!globalThis.sessionStorage) {
   })
 }
 
-Object.defineProperty(globalThis, 'ResizeObserver', {
-  value: vi.fn().mockImplementation(() => ({
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
-  })),
-})
+if (!globalThis.ResizeObserver) {
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    configurable: true,
+    writable: true,
+    value: vi.fn().mockImplementation(() => ({
+      observe: vi.fn(),
+      unobserve: vi.fn(),
+      disconnect: vi.fn(),
+    })),
+  })
+}
 
-Object.defineProperty(globalThis, 'matchMedia', {
-  value: vi.fn().mockImplementation((query: string) => ({
-    matches: false,
-    media: query,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    onchange: null,
-    dispatchEvent: vi.fn(),
-  })),
-})
+if (!globalThis.matchMedia) {
+  Object.defineProperty(globalThis, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      onchange: null,
+      dispatchEvent: vi.fn(),
+    })),
+  })
+}
 
-Object.defineProperty(globalThis, 'EventSource', {
-  writable: true,
-  value: MockEventSource,
-})
+if (!globalThis.EventSource) {
+  Object.defineProperty(globalThis, 'EventSource', {
+    configurable: true,
+    writable: true,
+    value: MockEventSource,
+  })
+} else {
+  ;(globalThis as Record<string, unknown>).EventSource = MockEventSource
+}
 
-Object.defineProperty(globalThis.HTMLElement.prototype, 'scrollIntoView', {
-  writable: true,
-  value: vi.fn(),
-})
+if (!globalThis.HTMLElement.prototype.scrollIntoView) {
+  Object.defineProperty(globalThis.HTMLElement.prototype, 'scrollIntoView', {
+    configurable: true,
+    writable: true,
+    value: vi.fn(),
+  })
+} else {
+  globalThis.HTMLElement.prototype.scrollIntoView = vi.fn()
+}
 
 beforeAll(() => server.listen())
 afterEach(() => server.resetHandlers())

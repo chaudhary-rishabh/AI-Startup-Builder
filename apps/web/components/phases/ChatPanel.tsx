@@ -16,6 +16,7 @@ interface ChatPanelProps {
   phase: number
   headerLabel: string
   placeholder: string
+  chatContext?: 'prd' | 'flow' | 'system' | 'uiux' | 'validate' | 'design' | 'growth'
   onSend: (message: string) => void
   messages: ChatMessage[]
   isAgentRunning: boolean
@@ -24,6 +25,7 @@ interface ChatPanelProps {
 export function ChatPanel({
   headerLabel,
   placeholder,
+  chatContext,
   onSend,
   messages,
   isAgentRunning,
@@ -57,6 +59,14 @@ export function ChatPanel({
     }
     return undefined
   }, [messages])
+
+  const resolvedPlaceholder = useMemo(() => {
+    if (chatContext === 'prd') return 'Ask about features, user stories, priorities...'
+    if (chatContext === 'flow') return 'Ask about user journey, flows, drop-off points...'
+    if (chatContext === 'system') return 'Ask about tech stack, architecture, APIs...'
+    if (chatContext === 'uiux') return 'Ask about screens, wireframes, design tokens...'
+    return placeholder
+  }, [chatContext, placeholder])
 
   return (
     <aside className="flex h-full w-[320px] flex-shrink-0 flex-col rounded-r-xl bg-card shadow-md max-md:hidden">
@@ -136,7 +146,7 @@ export function ChatPanel({
           <textarea
             value={text}
             rows={Math.min(3, Math.max(1, text.split('\n').length))}
-            placeholder={placeholder}
+            placeholder={resolvedPlaceholder}
             onChange={(event) => setText(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey) {

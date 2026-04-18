@@ -22,9 +22,19 @@ export interface Project {
   phaseProgress: Record<string, 'complete' | 'active' | 'locked'>
   lastActiveAt: string
   createdAt: string
+  phase2Output?: Phase2Output
+  copilotPreferences?: CopilotPreferences
 }
 
 export type BuildMode = 'autopilot' | 'copilot' | 'manual'
+
+export interface CopilotPreferences {
+  scale?: string
+  platform?: string
+  primaryColor?: string
+  architecture?: string
+  brandFeel?: string
+}
 
 export interface Competitor {
   name: string
@@ -49,6 +59,87 @@ export interface Phase1Output {
     riskLevel: 'Low' | 'Medium' | 'High'
     verdict: 'Yes' | 'No' | 'Pivot'
     reasoning: string
+  }
+}
+
+export interface DesignTokens {
+  primaryColor: string
+  backgroundColor: string
+  fontFamily: string
+  borderRadius: string
+  spacing: string
+  accentColor?: string
+}
+
+export interface MoSCoWFeature {
+  id: string
+  name: string
+  priority: 'Must' | 'Should' | 'Could' | 'Wont'
+  description: string
+  userStories?: UserStory[]
+  acceptanceCriteria?: string[]
+}
+
+export interface UserStory {
+  id: string
+  role: string
+  want: string
+  soThat: string
+  featureId?: string
+}
+
+export interface FlowStep {
+  id: string
+  type: 'action' | 'decision' | 'result' | 'start' | 'end'
+  label: string
+  nextSteps?: string[]
+  isDropOffRisk?: boolean
+}
+
+export interface TechStackCard {
+  category: 'frontend' | 'backend' | 'database' | 'auth' | 'infra'
+  name: string
+  reasoning: string
+  docsUrl?: string
+}
+
+export interface ApiEndpoint {
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  route: string
+  description: string
+}
+
+export interface WireframeScreen {
+  id: string
+  name: string
+  blocks: WireframeBlock[]
+}
+
+export interface WireframeBlock {
+  type: 'nav' | 'hero' | 'content' | 'footer' | 'sidebar' | 'card' | 'form'
+  label: string
+  height?: number
+  color?: string
+}
+
+export interface Phase2Output {
+  prd?: {
+    features: MoSCoWFeature[]
+    userStories: UserStory[]
+  }
+  userFlow?: {
+    flowSteps: FlowStep[]
+    dropOffPoints: string[]
+  }
+  systemDesign?: {
+    techStack: TechStackCard[]
+    apiEndpoints: ApiEndpoint[]
+    archDiagramText?: string
+  }
+  uiux?: {
+    wireframes: WireframeScreen[]
+    designSystem: DesignTokens
+    componentList: string[]
   }
 }
 
