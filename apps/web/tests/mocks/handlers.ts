@@ -2,6 +2,50 @@ import { http, HttpResponse } from 'msw'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
 
+interface MockProjectFile {
+  id: string
+  projectId: string
+  path: string
+  content: string
+  language: string
+  agentType: string
+  isModified: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+const defaultMockProjectFiles: MockProjectFile[] = [
+  {
+    id: 'file-1',
+    projectId: 'proj-1',
+    path: '/src/schema/user.ts',
+    content:
+      'import { pgTable, uuid, varchar } from "drizzle-orm/pg-core";\n\nexport const users = pgTable("users", {\n  id: uuid("id").primaryKey().defaultRandom(),\n  email: varchar("email", { length: 255 }).unique().notNull(),\n});\n',
+    language: 'typescript',
+    agentType: 'schema',
+    isModified: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'file-2',
+    projectId: 'proj-1',
+    path: '/src/routes/auth.ts',
+    content: 'import { Hono } from "hono";\n\nconst app = new Hono();\n\napp.post("/login", async (c) => {\n  return c.json({ success: true });\n});\n\nexport default app;\n',
+    language: 'typescript',
+    agentType: 'backend',
+    isModified: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+]
+
+let mockProjectFiles: MockProjectFile[] = [...defaultMockProjectFiles]
+
+export function resetMockProjectFiles(): void {
+  mockProjectFiles = [...defaultMockProjectFiles]
+}
+
 export const handlers = [
   http.post(`${API_BASE}/auth/register`, async () =>
     HttpResponse.json({ data: { userId: 'test-id', message: 'Verification email sent' } }),
@@ -284,15 +328,17 @@ export const handlers = [
       },
     })
   }),
-  http.post(`${API_BASE}/ai/runs`, async () =>
-    HttpResponse.json({
+  http.post(`${API_BASE}/ai/runs`, async ({ request }) => {
+    const body = (await request.json()) as { agentType?: string }
+    const runId = body.agentType === 'schema_gen' ? 'run-schema-1' : 'run-test-1'
+    return HttpResponse.json({
       data: {
-        runId: 'run-test-1',
-        streamUrl: '/ai/runs/run-test-1/stream',
+        runId,
+        streamUrl: `/ai/runs/${runId}/stream`,
         status: 'running',
       },
-    }),
-  ),
+    })
+  }),
   http.get(`${API_BASE}/ai/runs/run-test-1`, async () =>
     HttpResponse.json({
       data: {
@@ -324,9 +370,90 @@ export const handlers = [
       },
     }),
   ),
-  http.post(`${API_BASE}/projects/:id/export`, async () =>
-    new HttpResponse(new Blob(['mock-docx'], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), {
+  http.post(`${API_BASE}/projects/:id/export`, async ({ request }) => {
+    let format = 'docx'
+    try {
+      const body = (await request.json()) as { format?: string }
+      format = body.format ?? 'docx'
+    } catch {
+      format = 'docx'
+    }
+    if (format === 'zip') {
+      return new HttpResponse(new Blob([new Uint8Array([80, 75, 3, 4])], { type: 'application/zip' }), { status: 200 })
+    }
+    return new HttpResponse(new Blob(['mock-docx'], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), {
       status: 200,
+    })
+  }),
+  http.get(`${API_BASE}/projects/:id/files`, async ({ params }) =>
+    HttpResponse.json({
+      data: mockProjectFiles.filter((f) => f.projectId === String(params.id)),
+    }),
+  ),
+  http.get(`${API_BASE}/projects/:id/files/:fileId`, async ({ params }) => {
+    const file = mockProjectFiles.find((f) => f.id === String(params.fileId))
+    if (!file) return new HttpResponse(null, { status: 404 })
+    return HttpResponse.json({ data: file })
+  }),
+  http.patch(`${API_BASE}/projects/:id/files/:fileId`, async ({ params, request }) => {
+    const body = (await request.json()) as { content?: string }
+    const idx = mockProjectFiles.findIndex((f) => f.id === String(params.fileId))
+    if (idx < 0) return new HttpResponse(null, { status: 404 })
+    const now = new Date().toISOString()
+    mockProjectFiles[idx] = {
+      ...mockProjectFiles[idx]!,
+      content: body.content ?? mockProjectFiles[idx]!.content,
+      isModified: true,
+      updatedAt: now,
+    }
+    return HttpResponse.json({ data: mockProjectFiles[idx] })
+  }),
+  http.post(`${API_BASE}/projects/:id/files`, async ({ params, request }) => {
+    const body = (await request.json()) as { path: string; content: string; language: string }
+    const path = body.path.startsWith('/') ? body.path : `/${body.path}`
+    const file: MockProjectFile = {
+      id: `file-new-${mockProjectFiles.length}`,
+      projectId: String(params.id),
+      path,
+      content: body.content,
+      language: body.language,
+      agentType: 'schema',
+      isModified: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+    mockProjectFiles.push(file)
+    return HttpResponse.json({ data: file }, { status: 201 })
+  }),
+  http.delete(`${API_BASE}/projects/:id/files/:fileId`, async ({ params }) => {
+    mockProjectFiles = mockProjectFiles.filter((f) => f.id !== String(params.fileId))
+    return HttpResponse.json({ data: { deleted: true } })
+  }),
+  http.get(`${API_BASE}/projects/:id/generation-plan`, async () =>
+    HttpResponse.json({
+      data: {
+        totalFiles: 32,
+        totalBatches: 6,
+        estimatedMs: 28000,
+        fileList: [
+          '/src/schema/user.ts',
+          '/src/schema/project.ts',
+          '/src/routes/auth.ts',
+          '/src/routes/projects.ts',
+          '/src/controllers/auth.ts',
+          '/src/controllers/projects.ts',
+          '/src/middleware/auth.ts',
+          '/.env.example',
+          '/package.json',
+        ],
+        agentBreakdown: [
+          { agentType: 'schema', fileCount: 4 },
+          { agentType: 'api', fileCount: 6 },
+          { agentType: 'backend', fileCount: 14 },
+          { agentType: 'frontend', fileCount: 6 },
+          { agentType: 'integration', fileCount: 2 },
+        ],
+      },
     }),
   ),
   http.get(`${API_BASE}/rag/namespace`, async () =>

@@ -1,6 +1,6 @@
 'use client'
 
-import type { editor } from 'monaco-editor'
+import type { OnMount } from '@monaco-editor/react'
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useState } from 'react'
 
@@ -53,8 +53,8 @@ export function CodeEditor({
     return () => clearTimeout(t)
   }, [path, content])
 
-  const handleMount = useCallback(
-    (ed: editor.IStandaloneCodeEditor, monaco: typeof import('monaco-editor')): void => {
+  const handleMount: OnMount = useCallback(
+    (ed, monaco) => {
       monaco.editor.defineTheme('ai-startup-dark', {
         base: 'vs-dark',
         inherit: true,
@@ -115,9 +115,10 @@ export function CodeEditor({
         </div>
       ) : null}
       {isLoading ? <div className="absolute inset-0 z-20 animate-pulse bg-gradient-to-b from-slate-800 to-slate-900" /> : null}
-      <div className={`min-h-0 flex-1 transition-opacity duration-200 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`flex min-h-0 flex-1 flex-col transition-opacity duration-200 ${fadeIn ? 'opacity-100' : 'opacity-0'}`}>
         <MonacoEditor
           height="100%"
+          className="min-h-0 flex-1"
           path={path || 'untitled'}
           language={mapMonacoLanguage(language)}
           theme="ai-startup-dark"

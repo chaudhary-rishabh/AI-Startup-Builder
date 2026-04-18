@@ -62,4 +62,21 @@ describe('ChatPanel', () => {
     )
     expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0)
   })
+
+  it('darkMode uses teal user bubble and slate panel', () => {
+    const { container } = render(
+      <ChatPanel
+        projectId="p1"
+        phase={4}
+        headerLabel="Assistant"
+        placeholder="Ask..."
+        onSend={vi.fn()}
+        messages={[{ id: '1', role: 'user', content: 'hi', timestamp: new Date() }]}
+        isAgentRunning={false}
+        darkMode
+      />,
+    )
+    expect(container.querySelector('aside')?.className).toMatch(/0F172A/)
+    expect(screen.getByText('hi').parentElement?.className).toMatch(/0D9488/)
+  })
 })

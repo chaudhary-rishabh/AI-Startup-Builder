@@ -5,6 +5,9 @@ import path from 'node:path'
 export default defineConfig({
   plugins: [react()],
   test: {
+    env: {
+      NEXT_PUBLIC_API_URL: 'http://localhost:8000/api/v1',
+    },
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
     globals: true,
