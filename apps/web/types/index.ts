@@ -231,3 +231,51 @@ export type SSEEvent =
   | SSERunCompleteEvent
   | SSEErrorEvent
   | SSETokenBudgetWarningEvent
+
+export interface ProjectFile {
+  id: string
+  projectId: string
+  path: string
+  content: string
+  language: string
+  agentType: string
+  isModified: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface FileTreeNode {
+  type: 'file' | 'folder'
+  name: string
+  path: string
+  language?: string
+  agentType?: string
+  isModified?: boolean
+  isStreaming?: boolean
+  children?: FileTreeNode[]
+}
+
+export interface GenerationPlan {
+  totalFiles: number
+  totalBatches: number
+  estimatedMs: number
+  fileList: string[]
+  agentBreakdown: {
+    agentType: string
+    fileCount: number
+  }[]
+}
+
+export interface TerminalLine {
+  id: string
+  type: 'info' | 'success' | 'error' | 'system' | 'output'
+  content: string
+  timestamp: Date
+}
+
+export interface EditorTab {
+  path: string
+  language: string
+  isModified: boolean
+  isDirty: boolean
+}

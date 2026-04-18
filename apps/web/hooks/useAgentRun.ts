@@ -4,7 +4,15 @@ import { useState } from 'react'
 
 import { cancelAgentRun, startAgentRun } from '@/api/agents.api'
 import { useAgentStream } from '@/hooks/useAgentStream'
-import type { SSECrossCheckEvent, SSEDocModeEvent } from '@/types'
+import type {
+  SSECrossCheckEvent,
+  SSEBatchCompleteEvent,
+  SSEBatchStartEvent,
+  SSEDocModeEvent,
+  SSEFileCompleteEvent,
+  SSEFileStartEvent,
+  SSETokenEvent,
+} from '@/types'
 
 export interface UseAgentRunOptions {
   projectId: string
@@ -13,6 +21,11 @@ export interface UseAgentRunOptions {
   userMessage?: string
   onComplete?: (output: Record<string, unknown>) => void
   onError?: (code: string, message: string) => void
+  onToken?: (event: SSETokenEvent) => void
+  onFileStart?: (event: SSEFileStartEvent) => void
+  onFileComplete?: (event: SSEFileCompleteEvent) => void
+  onBatchStart?: (event: SSEBatchStartEvent) => void
+  onBatchComplete?: (event: SSEBatchCompleteEvent) => void
 }
 
 export type AgentRunStatus = 'idle' | 'starting' | 'connected' | 'running' | 'complete' | 'error'
@@ -41,8 +54,15 @@ export function useAgentRun(options: UseAgentRunOptions): UseAgentRunReturn {
   const { start: startStream, stop: stopStream, isStreaming } = useAgentStream({
     onRunStart: () => setStatus('running'),
     onDocMode: (event) => setDocMode(event),
-    onToken: (event) => setStreamedText((prev) => prev + event.token),
+    onToken: (event) => {
+      setStreamedText((prev) => prev + event.token)
+      options.onToken?.(event)
+    },
     onCrossCheck: (event) => setCrossChecks((prev) => [...prev, event]),
+    onFileStart: (event) => options.onFileStart?.(event),
+    onFileComplete: (event) => options.onFileComplete?.(event),
+    onBatchStart: (event) => options.onBatchStart?.(event),
+    onBatchComplete: (event) => options.onBatchComplete?.(event),
     onRunComplete: (event) => {
       setTokensUsed(event.tokensUsed)
       setStatus('complete')
