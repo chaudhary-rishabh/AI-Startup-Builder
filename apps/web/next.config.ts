@@ -35,7 +35,7 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: https:",
               "font-src 'self'",
               `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL ?? ''}`,
-              "frame-src 'none'",
+              "frame-src 'self' blob: data:",
             ].join('; '),
           },
         ],
