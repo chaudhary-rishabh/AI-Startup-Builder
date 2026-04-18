@@ -77,6 +77,14 @@ if (!globalThis.EventSource) {
   ;(globalThis as Record<string, unknown>).EventSource = MockEventSource
 }
 
+if (typeof globalThis.HTMLElement.prototype.scrollTo !== 'function') {
+  Object.defineProperty(globalThis.HTMLElement.prototype, 'scrollTo', {
+    configurable: true,
+    writable: true,
+    value: vi.fn(),
+  })
+}
+
 if (!globalThis.HTMLElement.prototype.scrollIntoView) {
   Object.defineProperty(globalThis.HTMLElement.prototype, 'scrollIntoView', {
     configurable: true,

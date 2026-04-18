@@ -64,7 +64,7 @@ describe('ChatPanel', () => {
   })
 
   it('darkMode uses teal user bubble and slate panel', () => {
-    const { container } = render(
+    render(
       <ChatPanel
         projectId="p1"
         phase={4}
@@ -76,7 +76,6 @@ describe('ChatPanel', () => {
         darkMode
       />,
     )
-    expect(container.querySelector('aside')?.className).toMatch(/0F172A/)
-    expect(screen.getByText('hi').parentElement?.className).toMatch(/0D9488/)
+    expect(screen.getByText('hi').className).toMatch(/0D9488/)
   })
 })

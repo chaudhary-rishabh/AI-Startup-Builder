@@ -40,8 +40,10 @@ export function Terminal({ lines, onClear }: TerminalProps): JSX.Element {
   const dragRef = useRef<{ startY: number; startH: number } | null>(null)
 
   useEffect(() => {
+    const el = bodyRef.current
+    if (!el) return
     if (isAtBottom) {
-      bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' })
+      el.scrollTop = el.scrollHeight
       setShowChip(false)
     } else if (lines.length) {
       setShowChip(true)
@@ -124,7 +126,8 @@ export function Terminal({ lines, onClear }: TerminalProps): JSX.Element {
               type="button"
               className="sticky bottom-2 left-1/2 mx-auto mt-2 block -translate-x-1/2 rounded-full bg-[#0D9488] px-2 py-0.5 text-[10px] text-white"
               onClick={() => {
-                bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' })
+                const el = bodyRef.current
+                if (el) el.scrollTop = el.scrollHeight
                 setShowChip(false)
               }}
             >

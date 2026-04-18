@@ -1,6 +1,9 @@
 import type { BrowserContext, Page } from '@playwright/test'
 
 export const projectFixture = {
+  async createForPhase4Build(_page: Page): Promise<string> {
+    return 'proj-1'
+  },
   async createInPhase1(_page: Page, _context: BrowserContext): Promise<string> {
     return 'proj-1'
   },
