@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: #8b6f47;
+  --brand-dark: #5c4425;
+  --brand-light: #c4a882;
+  --bg: #f5f0e8;
+  --sidebar: #ede5d8;
+  --divider: #e8dfd0;
+  --card: #ffffff;
+  --output: #faf8f5;
+  --muted: #c4a882;
+  --heading: #5c4425;
+  --error: #dc2626;
+  --success: #16a34a;
+  --warning: #d97706;
+}
+
+body {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    #ede5d8 25%,
+    #f5f0e8 50%,
+    #ede5d8 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+.recharts-text {
+  font-family: Arial, system-ui, sans-serif;
+  fill: #5c4425;
+}
+.recharts-tooltip-wrapper {
+  outline: none;
+}

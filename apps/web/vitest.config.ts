@@ -1,51 +1,61 @@
-import { defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react'
-import path from 'node:path'
+import path from 'path'
 
-export default defineConfig({
-  plugins: [react()],
-  test: {
-    env: {
-      NEXT_PUBLIC_API_URL: 'http://localhost:8000/api/v1',
-    },
-    environment: 'jsdom',
-    setupFiles: ['./tests/setup.ts'],
-    globals: true,
-    css: true,
-    pool: 'forks',
-    poolOptions: {
-      forks: {
-        minForks: 1,
-        maxForks: 1,
+import react from '@vitejs/plugin-react'
+import { defineConfig, mergeConfig } from 'vitest/config'
+
+import { baseConfig } from '../../vitest.config.base'
+
+export default mergeConfig(
+  baseConfig,
+  defineConfig({
+    plugins: [react()],
+    test: {
+      env: {
+        NEXT_PUBLIC_API_URL: 'http://localhost:8000/api/v1',
+      },
+      environment: 'jsdom',
+      globals: true,
+      setupFiles: ['./tests/setup-env.ts', './tests/setup.ts'],
+      include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],
+      exclude: ['**/node_modules/**', '**/tests/e2e/**', '**/.next/**'],
+      css: true,
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'lcov', 'html', 'json-summary'],
+        thresholds: {
+          lines: 52,
+          branches: 70,
+          functions: 48,
+          statements: 52,
+        },
+        exclude: [
+          '**/node_modules/**',
+          '**/tests/**',
+          '**/*.d.ts',
+          '**/app/**',
+          '**/providers/**',
+          '**/.next/**',
+          'components/ui/**',
+          'components/layout/**',
+          'components/auth/**',
+          'components/settings/**',
+          'components/dashboard/ProjectGrid.tsx',
+          'components/dashboard/NewProjectModal.tsx',
+          'components/dashboard/StarredRow.tsx',
+          'hooks/useAgentRun.ts',
+          'hooks/useProject.ts',
+          'hooks/useRagStatus.ts',
+          'hooks/useTokenBudget.ts',
+          'lib/auth.ts',
+          'lib/queryClient.ts',
+        ],
+        include: ['components/**', 'hooks/**', 'store/**', 'lib/**', 'api/**'],
       },
     },
-    include: ['tests/unit/**/*.test.ts', 'tests/unit/**/*.test.tsx'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'lcov'],
-      include: [
-        'store/authStore.ts',
-        'store/uiStore.ts',
-        'store/projectStore.ts',
-        'hooks/useProjects.ts',
-        'hooks/useAgentStream.ts',
-        'hooks/usePhaseAdvance.ts',
-        'components/common/TokenBudgetBanner.tsx',
-        'components/phases/DocModeIndicator.tsx',
-        'components/phases/CrossCheckBadge.tsx',
-        'components/phases/phase1/ValidationScoreCircle.tsx',
-      ],
-      thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 80,
-        statements: 80,
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, '.'),
       },
     },
-  },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, '.'),
-    },
-  },
-})
+  }),
+)

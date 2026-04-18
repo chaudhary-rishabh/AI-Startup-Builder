@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook } from '@testing-library/react'
-import { createElement, type ReactNode } from 'react'
+import React from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { usePhaseAdvance } from '@/hooks/usePhaseAdvance'
@@ -20,39 +20,96 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock }),
 }))
 
-function wrapper({ children }: { children: ReactNode }): JSX.Element {
-  return createElement(QueryClientProvider, { client: new QueryClient() }, children)
+const makeWrapper = () => {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return ({ children }: { children: React.ReactNode }) =>
+    React.createElement(QueryClientProvider, { client: qc }, children)
 }
 
 describe('usePhaseAdvance', () => {
-  it('autopilot can advance when all agents complete', () => {
+  it('canAdvance=true in autopilot when all agents complete', () => {
     const { result } = renderHook(
       () =>
         usePhaseAdvance({
-          projectId: 'p1',
+          projectId: 'proj-1',
           currentPhase: 1,
           buildMode: 'autopilot',
           allAgentsComplete: true,
         }),
-      { wrapper },
+      { wrapper: makeWrapper() },
     )
     expect(result.current.canAdvance).toBe(true)
   })
 
-  it('copilot requires answered card', () => {
+  it('canAdvance=false in autopilot when agents not complete', () => {
     const { result } = renderHook(
       () =>
         usePhaseAdvance({
-          projectId: 'p1',
+          projectId: 'proj-1',
+          currentPhase: 1,
+          buildMode: 'autopilot',
+          allAgentsComplete: false,
+        }),
+      { wrapper: makeWrapper() },
+    )
+    expect(result.current.canAdvance).toBe(false)
+  })
+
+  it('canAdvance=false in copilot when copilotAnswered is false', () => {
+    const { result } = renderHook(
+      () =>
+        usePhaseAdvance({
+          projectId: 'proj-1',
           currentPhase: 1,
           buildMode: 'copilot',
           allAgentsComplete: true,
           copilotAnswered: false,
         }),
-      { wrapper },
+      { wrapper: makeWrapper() },
     )
     expect(result.current.canAdvance).toBe(false)
-    expect(result.current.showCopilotCard).toBe(true)
+  })
+
+  it('canAdvance=true in copilot when all done and copilot answered', () => {
+    const { result } = renderHook(
+      () =>
+        usePhaseAdvance({
+          projectId: 'proj-1',
+          currentPhase: 1,
+          buildMode: 'copilot',
+          allAgentsComplete: true,
+          copilotAnswered: true,
+        }),
+      { wrapper: makeWrapper() },
+    )
+    expect(result.current.canAdvance).toBe(true)
+  })
+
+  it('showCopilotCard only in copilot mode when all done and not answered', () => {
+    const copilot = renderHook(
+      () =>
+        usePhaseAdvance({
+          projectId: 'p',
+          currentPhase: 1,
+          buildMode: 'copilot',
+          allAgentsComplete: true,
+          copilotAnswered: false,
+        }),
+      { wrapper: makeWrapper() },
+    )
+    expect(copilot.result.current.showCopilotCard).toBe(true)
+
+    const autopilot = renderHook(
+      () =>
+        usePhaseAdvance({
+          projectId: 'p',
+          currentPhase: 1,
+          buildMode: 'autopilot',
+          allAgentsComplete: true,
+        }),
+      { wrapper: makeWrapper() },
+    )
+    expect(autopilot.result.current.showCopilotCard).toBe(false)
   })
 
   it('advance calls api and router push', async () => {
@@ -65,7 +122,7 @@ describe('usePhaseAdvance', () => {
           buildMode: 'autopilot',
           allAgentsComplete: true,
         }),
-      { wrapper },
+      { wrapper: makeWrapper() },
     )
     await result.current.advance()
     expect(advancePhaseMock).toHaveBeenCalledWith('p1', 2)

@@ -21,7 +21,8 @@ export default defineConfig({
     globals: true,
 
     coverage: {
-      ...baseConfig.test?.coverage,
+      provider: 'v8',
+      reporter: ['text', 'lcov', 'json-summary'],
       exclude: [
         '**/node_modules/**',
         '**/dist/**',
@@ -38,6 +39,12 @@ export default defineConfig({
         // Radix UI wrappers — thin pass-throughs, no custom logic to test
         'src/components/shadcn/**',
       ],
+      thresholds: {
+        lines: 80,
+        branches: 80,
+        functions: 80,
+        statements: 80,
+      },
     },
   },
 

@@ -686,7 +686,9 @@ export const handlers = [
   ),
   http.post(`${API_BASE}/ai/runs/:runId/cancel`, async () => HttpResponse.json({ data: { status: 'cancelled' } })),
   http.post(`${API_BASE}/projects/:id/copilot-preferences`, async () => HttpResponse.json({ data: { saved: true } })),
-  http.patch(`${API_BASE}/projects/:id/phase-data/2`, async () => HttpResponse.json({ data: { saved: true } })),
+  http.patch(`${API_BASE}/projects/:id/phase-data/:phase`, async () =>
+    HttpResponse.json({ data: { saved: true } }),
+  ),
   http.post(`${API_BASE}/ai/chat`, async () =>
     HttpResponse.json({
       data: {

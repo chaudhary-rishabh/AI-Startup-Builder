@@ -11,6 +11,7 @@ describe('projectStore', () => {
       mode: 'design',
       buildMode: 'copilot',
       isModeTransitioning: false,
+      designTokens: null,
     })
   })
 
@@ -18,28 +19,67 @@ describe('projectStore', () => {
     vi.useRealTimers()
   })
 
-  it('setBuildMode updates buildMode', () => {
-    useProjectStore.getState().setBuildMode('manual')
-    expect(useProjectStore.getState().buildMode).toBe('manual')
+  describe('buildMode', () => {
+    it('defaults to copilot', () => {
+      expect(useProjectStore.getState().buildMode).toBe('copilot')
+    })
+
+    it('setBuildMode updates buildMode', () => {
+      useProjectStore.getState().setBuildMode('autopilot')
+      expect(useProjectStore.getState().buildMode).toBe('autopilot')
+    })
   })
 
-  it("setMode('dev') transitions for 400ms", () => {
-    useProjectStore.getState().setMode('dev')
-    expect(useProjectStore.getState().isModeTransitioning).toBe(true)
-    vi.advanceTimersByTime(400)
-    expect(useProjectStore.getState().isModeTransitioning).toBe(false)
+  describe('setMode', () => {
+    it('sets isModeTransitioning true then resets after 400ms', () => {
+      useProjectStore.getState().setMode('dev')
+      expect(useProjectStore.getState().isModeTransitioning).toBe(true)
+      expect(useProjectStore.getState().mode).toBe('dev')
+      vi.advanceTimersByTime(400)
+      expect(useProjectStore.getState().isModeTransitioning).toBe(false)
+    })
   })
 
-  it('setActiveProject sets id and phase', () => {
-    useProjectStore.getState().setActiveProject('proj-1', 3)
-    expect(useProjectStore.getState().activeProjectId).toBe('proj-1')
-    expect(useProjectStore.getState().currentPhase).toBe(3)
+  describe('setActiveProject', () => {
+    it('sets activeProjectId and currentPhase', () => {
+      useProjectStore.getState().setActiveProject('proj-abc', 3)
+      const state = useProjectStore.getState()
+      expect(state.activeProjectId).toBe('proj-abc')
+      expect(state.currentPhase).toBe(3)
+    })
+
+    it('defaults phase to 1 when not provided', () => {
+      useProjectStore.getState().setActiveProject('proj-abc')
+      expect(useProjectStore.getState().currentPhase).toBe(1)
+    })
   })
 
-  it('clearProject resets values', () => {
-    useProjectStore.getState().setActiveProject('proj-1', 3)
-    useProjectStore.getState().clearProject()
-    expect(useProjectStore.getState().activeProjectId).toBeNull()
-    expect(useProjectStore.getState().currentPhase).toBe(1)
+  describe('designTokens', () => {
+    it('defaults to null', () => {
+      expect(useProjectStore.getState().designTokens).toBeNull()
+    })
+
+    it('setDesignTokens stores tokens', () => {
+      const tokens = {
+        primaryColor: '#7C3AED',
+        backgroundColor: '#F5F0E8',
+        fontFamily: 'Inter',
+        borderRadius: '8px',
+        spacing: '4px',
+      }
+      useProjectStore.getState().setDesignTokens(tokens)
+      expect(useProjectStore.getState().designTokens).toEqual(tokens)
+    })
+  })
+
+  describe('clearProject', () => {
+    it('resets to initial state', () => {
+      useProjectStore.getState().setActiveProject('proj-1', 4)
+      useProjectStore.getState().setBuildMode('manual')
+      useProjectStore.getState().clearProject()
+      const state = useProjectStore.getState()
+      expect(state.activeProjectId).toBeNull()
+      expect(state.currentPhase).toBe(1)
+    })
   })
 })

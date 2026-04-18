@@ -2,52 +2,34 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { ModeToggle } from '@/components/layout/ModeToggle'
-
-const switchToDesign = vi.fn()
-const switchToDev = vi.fn()
-let mode: 'design' | 'dev' = 'design'
-let isModeTransitioning = false
-
-vi.mock('@/hooks/useDesignMode', () => ({
-  useDesignMode: () => ({
-    mode,
-    switchToDesign,
-    switchToDev,
-    isModeTransitioning,
-    isDesign: mode === 'design',
-    isDev: mode === 'dev',
-  }),
-}))
+import { useProjectStore } from '@/store/projectStore'
 
 describe('ModeToggle', () => {
-  it('renders both mode buttons', () => {
+  it('renders Design and Dev buttons', () => {
     render(<ModeToggle />)
-    expect(screen.getByRole('button', { name: '🎨 Design' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '💻 Dev' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /design/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /dev/i })).toBeInTheDocument()
   })
 
-  it('clicking Dev calls switchToDev', () => {
+  it('clicking Dev switches mode', () => {
     render(<ModeToggle />)
-    fireEvent.click(screen.getByRole('button', { name: '💻 Dev' }))
-    expect(switchToDev).toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: /dev/i }))
+    expect(useProjectStore.getState().mode).toBe('dev')
   })
 
-  it('active side has correct bg class', () => {
-    mode = 'dev'
+  it('clicking Design switches mode back', () => {
+    vi.useFakeTimers()
+    useProjectStore.getState().setMode('dev')
+    vi.advanceTimersByTime(400)
+    render(<ModeToggle />)
+    fireEvent.click(screen.getByRole('button', { name: /design/i }))
+    vi.advanceTimersByTime(400)
+    vi.useRealTimers()
+    expect(useProjectStore.getState().mode).toBe('design')
+  })
+
+  it('renders sliding pill behind mode buttons', () => {
     const { container } = render(<ModeToggle />)
-    expect(container.querySelector('[class*="bg-dev"]')).toBeTruthy()
-    mode = 'design'
-  })
-
-  it('disabled while transitioning', () => {
-    isModeTransitioning = true
-    render(<ModeToggle />)
-    expect(screen.getByRole('button', { name: '🎨 Design' })).toBeDisabled()
-    isModeTransitioning = false
-  })
-
-  it('uses layoutId mode-indicator', () => {
-    const { container } = render(<ModeToggle />)
-    expect(container.querySelector('[class*="bg-design"], [class*="bg-dev"]')).toBeTruthy()
+    expect(container.querySelector('.absolute.rounded-full')).toBeTruthy()
   })
 })

@@ -1,95 +1,77 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { useAuthStore } from '@/store/authStore'
 
+const mockUser = {
+  id: 'user-1',
+  email: 'test@example.com',
+  name: 'Test User',
+  avatarUrl: null,
+  role: 'user' as const,
+  plan: 'pro' as const,
+  onboardingDone: true,
+}
+
 describe('authStore', () => {
-  let setItemSpy: ReturnType<typeof vi.spyOn>
-
-  beforeEach(() => {
-    useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false })
-    localStorage.clear()
-    setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
-  })
-
-  afterEach(() => {
-    setItemSpy.mockRestore()
-  })
-
-  it('login() sets user + isAuthenticated=true', () => {
-    useAuthStore.getState().setUser({
-      id: '1',
-      email: 'a@a.com',
-      name: 'A',
-      avatarUrl: null,
-      role: 'user',
-      plan: 'free',
-      onboardingDone: false,
+  describe('setUser', () => {
+    it('sets user and marks authenticated', () => {
+      useAuthStore.getState().setUser(mockUser)
+      const state = useAuthStore.getState()
+      expect(state.user).toEqual(mockUser)
+      expect(state.isAuthenticated).toBe(true)
+      expect(state.isLoading).toBe(false)
     })
-    expect(useAuthStore.getState().isAuthenticated).toBe(true)
-    expect(useAuthStore.getState().user?.email).toBe('a@a.com')
   })
 
-  it('clearAuth() nulls user + isAuthenticated=false', () => {
-    useAuthStore.getState().setUser({
-      id: '1',
-      email: 'a@a.com',
-      name: 'A',
-      avatarUrl: null,
-      role: 'user',
-      plan: 'free',
-      onboardingDone: false,
+  describe('clearAuth', () => {
+    it('nulls user and clears authentication', () => {
+      useAuthStore.getState().setUser(mockUser)
+      useAuthStore.getState().clearAuth()
+      const state = useAuthStore.getState()
+      expect(state.user).toBeNull()
+      expect(state.isAuthenticated).toBe(false)
     })
-    useAuthStore.getState().clearAuth()
-    expect(useAuthStore.getState().user).toBeNull()
-    expect(useAuthStore.getState().isAuthenticated).toBe(false)
   })
 
-  it('updatePlan() updates only user.plan', () => {
-    useAuthStore.getState().setUser({
-      id: '1',
-      email: 'a@a.com',
-      name: 'A',
-      avatarUrl: null,
-      role: 'user',
-      plan: 'free',
-      onboardingDone: false,
+  describe('updatePlan', () => {
+    it('updates plan when user is set', () => {
+      useAuthStore.getState().setUser(mockUser)
+      useAuthStore.getState().updatePlan('team')
+      expect(useAuthStore.getState().user?.plan).toBe('team')
     })
-    useAuthStore.getState().updatePlan('pro')
-    expect(useAuthStore.getState().user?.plan).toBe('pro')
-    expect(useAuthStore.getState().user?.email).toBe('a@a.com')
-  })
 
-  it('setLoading() toggles isLoading', () => {
-    useAuthStore.getState().setLoading(true)
-    expect(useAuthStore.getState().isLoading).toBe(true)
-    useAuthStore.getState().setLoading(false)
-    expect(useAuthStore.getState().isLoading).toBe(false)
-  })
-
-  it('persists user to localStorage', () => {
-    useAuthStore.getState().setUser({
-      id: '1',
-      email: 'a@a.com',
-      name: 'A',
-      avatarUrl: null,
-      role: 'user',
-      plan: 'free',
-      onboardingDone: false,
+    it('does nothing when user is null', () => {
+      expect(() => useAuthStore.getState().updatePlan('pro')).not.toThrow()
+      expect(useAuthStore.getState().user).toBeNull()
     })
-    expect(setItemSpy).toHaveBeenCalled()
   })
 
-  it('rehydrates user from localStorage on init', () => {
-    useAuthStore.getState().setUser({
-      id: '1',
-      email: 'a@a.com',
-      name: 'A',
-      avatarUrl: null,
-      role: 'user',
-      plan: 'free',
-      onboardingDone: false,
+  describe('setLoading', () => {
+    it('toggles isLoading', () => {
+      useAuthStore.getState().setLoading(true)
+      expect(useAuthStore.getState().isLoading).toBe(true)
+      useAuthStore.getState().setLoading(false)
+      expect(useAuthStore.getState().isLoading).toBe(false)
     })
-    const snapshot = useAuthStore.getState().user
-    expect(snapshot?.id).toBe('1')
+  })
+
+  describe('persistence', () => {
+    it('persists user to localStorage', () => {
+      useAuthStore.getState().setUser(mockUser)
+      expect(window.localStorage.setItem).toHaveBeenCalled()
+      const raw = window.localStorage.getItem('auth-store')
+      expect(raw).toBeTruthy()
+      expect(raw).toContain('user-1')
+    })
+
+    it('does not persist isLoading', () => {
+      expect(useAuthStore.getState().isLoading).toBeDefined()
+      useAuthStore.getState().setLoading(true)
+      const raw = window.localStorage.getItem('auth-store')
+      expect(raw).toBeTruthy()
+      const parsed = JSON.parse(raw as string) as { state?: { isLoading?: boolean } }
+      const stateObj = parsed?.state ?? parsed
+      expect(stateObj).not.toHaveProperty('isLoading')
+    })
   })
 })
