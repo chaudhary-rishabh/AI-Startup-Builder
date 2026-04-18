@@ -85,7 +85,8 @@ export function TestRunner({ projectId, onAllTestsPass, onFixTestRequest }: Test
         suites: defaultSuites(),
       }
       setResults(next)
-      if (next.failed === 0) onAllTestsPass()
+      const total = next.passed + next.failed + next.skipped
+      if (next.failed === 0 && total > 0) onAllTestsPass()
     },
   })
 
