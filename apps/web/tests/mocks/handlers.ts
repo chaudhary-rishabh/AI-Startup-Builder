@@ -2,6 +2,68 @@ import { http, HttpResponse } from 'msw'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1'
 
+function sseResponse(lines: string): HttpResponse<string> {
+  return new HttpResponse<string>(lines, {
+    headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
+  })
+}
+
+let mockRagDocuments = [
+  {
+    id: 'doc-1',
+    filename: 'business-plan.pdf',
+    fileType: 'pdf' as const,
+    fileSizeBytes: 1_048_576,
+    status: 'indexed' as const,
+    chunkCount: 48,
+    source: 'upload' as const,
+    customInstructions: null as string | null,
+    createdAt: new Date().toISOString(),
+    indexedAt: new Date().toISOString(),
+  },
+  {
+    id: 'doc-2',
+    filename: 'market-research.docx',
+    fileType: 'docx' as const,
+    fileSizeBytes: 524_288,
+    status: 'processing' as const,
+    chunkCount: 0,
+    source: 'upload' as const,
+    customInstructions: 'Focus on SaaS metrics',
+    createdAt: new Date().toISOString(),
+    indexedAt: null as string | null,
+  },
+]
+
+export function resetMockRagDocuments(): void {
+  mockRagDocuments = [
+    {
+      id: 'doc-1',
+      filename: 'business-plan.pdf',
+      fileType: 'pdf',
+      fileSizeBytes: 1_048_576,
+      status: 'indexed',
+      chunkCount: 48,
+      source: 'upload',
+      customInstructions: null,
+      createdAt: new Date().toISOString(),
+      indexedAt: new Date().toISOString(),
+    },
+    {
+      id: 'doc-2',
+      filename: 'market-research.docx',
+      fileType: 'docx',
+      fileSizeBytes: 524_288,
+      status: 'processing',
+      chunkCount: 0,
+      source: 'upload',
+      customInstructions: 'Focus on SaaS metrics',
+      createdAt: new Date().toISOString(),
+      indexedAt: null,
+    },
+  ]
+}
+
 interface MockProjectFile {
   id: string
   projectId: string
@@ -35,6 +97,17 @@ const defaultMockProjectFiles: MockProjectFile[] = [
     language: 'typescript',
     agentType: 'backend',
     isModified: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'file-env',
+    projectId: 'proj-1',
+    path: '/.env.example',
+    content: 'DATABASE_URL=\nNEXTAUTH_SECRET=\n',
+    language: 'plaintext',
+    agentType: 'backend',
+    isModified: false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -98,7 +171,144 @@ export const handlers = [
       },
     }),
   ),
-  http.patch(`${API_BASE}/users/profile`, async () => HttpResponse.json({ data: { updated: true } })),
+  http.get(`${API_BASE}/billing/subscription`, async () =>
+    HttpResponse.json({
+      data: {
+        planTier: 'pro',
+        status: 'active',
+        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        cancelAtPeriodEnd: false,
+        stripeCustomerId: 'cus_test123',
+      },
+    }),
+  ),
+  http.get(`${API_BASE}/billing/invoices`, async () =>
+    HttpResponse.json({
+      data: [
+        {
+          id: 'inv-1',
+          amount: 2900,
+          currency: 'usd',
+          status: 'paid',
+          periodStart: new Date().toISOString(),
+          periodEnd: new Date().toISOString(),
+          invoiceUrl: 'https://stripe.com/invoices/test',
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    }),
+  ),
+  http.get(`${API_BASE}/billing/plans`, async () =>
+    HttpResponse.json({
+      data: [
+        {
+          tier: 'free',
+          name: 'Free',
+          price: { monthly: 0, yearly: 0 },
+          tokenLimit: 50000,
+          projectLimit: 3,
+          features: ['Phase 1 & 2 only', '3 projects', '50K tokens/month'],
+        },
+        {
+          tier: 'pro',
+          name: 'Pro',
+          price: { monthly: 2900, yearly: 29000 },
+          tokenLimit: 500000,
+          projectLimit: 20,
+          features: ['All 6 phases', '20 projects', '500K tokens/month', 'Code export'],
+        },
+      ],
+    }),
+  ),
+  http.post(`${API_BASE}/billing/portal`, async () =>
+    HttpResponse.json({ data: { portalUrl: 'https://billing.stripe.com/session/test' } }),
+  ),
+  http.delete(`${API_BASE}/billing/subscription`, async () => HttpResponse.json({ data: { cancelled: true } })),
+  http.get(`${API_BASE}/users/me`, async () =>
+    HttpResponse.json({
+      data: {
+        id: 'user-1',
+        name: 'Alex Founder',
+        email: 'alex@example.com',
+        avatarUrl: null,
+        role: 'FOUNDER',
+        bio: 'Building the future',
+        company: 'TechCo',
+        website: 'https://techco.com',
+        timezone: 'America/New_York',
+      },
+    }),
+  ),
+  http.patch(`${API_BASE}/users/profile`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({
+      data: {
+        id: 'user-1',
+        name: String(body.name ?? 'Alex Founder'),
+        email: 'alex@example.com',
+        avatarUrl: body.avatarUrl === undefined ? null : (body.avatarUrl as string | null),
+        role: String(body.role ?? 'FOUNDER'),
+        bio: body.bio === undefined ? 'Building the future' : (body.bio as string | null),
+        company: body.company === undefined ? 'TechCo' : (body.company as string | null),
+        website: body.website === undefined ? 'https://techco.com' : (body.website as string | null),
+        timezone: String(body.timezone ?? 'America/New_York'),
+      },
+    })
+  }),
+  http.post(`${API_BASE}/users/avatar`, async () =>
+    HttpResponse.json({ data: { avatarUrl: 'https://cdn.example.com/avatar.png' } }),
+  ),
+  http.get(`${API_BASE}/users/notification-preferences`, async () =>
+    HttpResponse.json({
+      data: {
+        emailEnabled: true,
+        inAppEnabled: true,
+        phaseComplete: true,
+        agentDone: true,
+        billingEvents: true,
+        weeklyDigest: true,
+        securityAlerts: true,
+      },
+    }),
+  ),
+  http.patch(`${API_BASE}/users/notification-preferences`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({
+      data: {
+        emailEnabled: Boolean(body.emailEnabled ?? true),
+        inAppEnabled: Boolean(body.inAppEnabled ?? true),
+        phaseComplete: Boolean(body.phaseComplete ?? true),
+        agentDone: Boolean(body.agentDone ?? true),
+        billingEvents: Boolean(body.billingEvents ?? true),
+        weeklyDigest: Boolean(body.weeklyDigest ?? true),
+        securityAlerts: true,
+      },
+    })
+  }),
+  http.get(`${API_BASE}/users/api-keys`, async () =>
+    HttpResponse.json({
+      data: [
+        {
+          id: 'key-1',
+          prefix: 'ask_1234',
+          name: 'My Dev Key',
+          lastUsedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    }),
+  ),
+  http.post(`${API_BASE}/users/api-keys`, async () =>
+    HttpResponse.json({
+      data: {
+        id: 'key-new',
+        prefix: 'ask_9999',
+        secret: 'ask_9999xxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+        name: 'Test Key',
+      },
+    }),
+  ),
+  http.delete(`${API_BASE}/users/api-keys/:id`, async () => HttpResponse.json({ data: { revoked: true } })),
   http.get(`${API_BASE}/projects`, async () =>
     HttpResponse.json({
       data: {
@@ -330,7 +540,17 @@ export const handlers = [
   }),
   http.post(`${API_BASE}/ai/runs`, async ({ request }) => {
     const body = (await request.json()) as { agentType?: string }
-    const runId = body.agentType === 'schema_gen' ? 'run-schema-1' : 'run-test-1'
+    const agent = body.agentType ?? ''
+    const runMap: Record<string, string> = {
+      schema_gen: 'run-schema-1',
+      testing: 'run-testing-1',
+      cicd: 'run-cicd-1',
+      deploy: 'run-deploy-1',
+      analytics_agent: 'run-analytics-1',
+      feedback: 'run-feedback-1',
+      growth: 'run-growth-1',
+    }
+    const runId = runMap[agent] ?? 'run-test-1'
     return HttpResponse.json({
       data: {
         runId,
@@ -338,6 +558,111 @@ export const handlers = [
         status: 'running',
       },
     })
+  }),
+  http.get(`${API_BASE}/ai/runs/:runId/stream`, ({ params }) => {
+    const runId = String(params.runId)
+    const testResults = {
+      passed: 3,
+      failed: 0,
+      skipped: 1,
+      suites: [
+        {
+          name: 'Unit Tests',
+          tests: [
+            { name: 'sanity', status: 'passed', durationMs: 12 },
+            { name: 'auth', status: 'passed', durationMs: 34 },
+          ],
+        },
+        {
+          name: 'Integration Tests',
+          tests: [{ name: 'api health', status: 'passed', durationMs: 120 }],
+        },
+        {
+          name: 'E2E Tests',
+          tests: [{ name: 'smoke', status: 'skipped', durationMs: 0 }],
+        },
+      ],
+    }
+    if (runId === 'run-testing-1') {
+      const lines = [
+        `event: token\ndata: ${JSON.stringify({ type: 'token', token: '>> tests starting\n', runId })}\n\n`,
+        `event: done\ndata: ${JSON.stringify({ runId, tokensUsed: 1200, durationMs: 400, output: { testResults } })}\n\n`,
+      ]
+      return sseResponse(lines.join(''))
+    }
+    if (runId === 'run-cicd-1') {
+      const yaml = 'name: CI\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n'
+      const lines = [
+        `event: token\ndata: ${JSON.stringify({ type: 'token', token: yaml, runId })}\n\n`,
+        `event: done\ndata: ${JSON.stringify({ runId, tokensUsed: 800, durationMs: 300, output: { cicdYaml: yaml } })}\n\n`,
+      ]
+      return sseResponse(lines.join(''))
+    }
+    if (runId === 'run-deploy-1') {
+      const lines = [
+        `event: token\ndata: ${JSON.stringify({ type: 'token', token: '→ Deploy pipeline starting\n', runId })}\n\n`,
+        `event: token\ndata: ${JSON.stringify({ type: 'token', token: '✓ SUCCESS build complete\n', runId })}\n\n`,
+        `event: done\ndata: ${JSON.stringify({
+          runId,
+          tokensUsed: 500,
+          durationMs: 200,
+          output: { deployOutput: { liveUrl: 'https://my-app.vercel.app' } },
+        })}\n\n`,
+      ]
+      return sseResponse(lines.join(''))
+    }
+    if (runId === 'run-analytics-1') {
+      const output = {
+        kpis: { activeUsers: 1240, retentionRate: 0.76, churnPercent: 0.042, mrr: 1240 },
+        funnelDef: {
+          steps: [
+            { name: 'Acquisition', users: 10000, conversionRate: 100, dropOffRate: 40 },
+            { name: 'Activation', users: 6000, conversionRate: 60, dropOffRate: 35 },
+            { name: 'Retention', users: 3900, conversionRate: 65, dropOffRate: 30 },
+            { name: 'Revenue', users: 1200, conversionRate: 31, dropOffRate: 0 },
+          ],
+        },
+      }
+      const lines = [
+        `event: done\ndata: ${JSON.stringify({ runId, tokensUsed: 900, durationMs: 250, output })}\n\n`,
+      ]
+      return sseResponse(lines.join(''))
+    }
+    if (runId === 'run-feedback-1') {
+      const output = {
+        sentimentByEntry: [
+          {
+            id: 'f1',
+            text: 'Love the onboarding flow, very smooth experience for our team.',
+            sentiment: 'positive',
+            category: 'General',
+            frequency: 3,
+          },
+        ],
+      }
+      const lines = [`event: done\ndata: ${JSON.stringify({ runId, tokensUsed: 600, durationMs: 180, output })}\n\n`]
+      return sseResponse(lines.join(''))
+    }
+    if (runId === 'run-growth-1') {
+      const output = {
+        marketingChannels: [
+          { id: 'm1', title: 'Publish SEO pillar pages', channel: 'SEO', effort: 'low' },
+          { id: 'm2', title: 'Founder-led LinkedIn', channel: 'Social', effort: 'medium' },
+        ],
+        firstHundredSteps: ['Ship MVP to 10 partners', 'Run weekly user interviews', 'Launch waitlist landing page'],
+      }
+      const lines = [`event: done\ndata: ${JSON.stringify({ runId, tokensUsed: 700, durationMs: 220, output })}\n\n`]
+      return sseResponse(lines.join(''))
+    }
+    if (runId === 'run-schema-1') {
+      const lines = [
+        `event: batch_start\ndata: ${JSON.stringify({ type: 'batch_start', batchNumber: 1, totalBatches: 1, agentType: 'schema_gen', fileCount: 1, runId })}\n\n`,
+        `event: done\ndata: ${JSON.stringify({ runId, tokensUsed: 100, durationMs: 50, output: { filesGenerated: 1, agentType: 'schema_gen' } })}\n\n`,
+      ]
+      return sseResponse(lines.join(''))
+    }
+    const lines = [`event: done\ndata: ${JSON.stringify({ runId, tokensUsed: 10, durationMs: 10, output: {} })}\n\n`]
+    return sseResponse(lines.join(''))
   }),
   http.get(`${API_BASE}/ai/runs/run-test-1`, async () =>
     HttpResponse.json({
@@ -359,7 +684,7 @@ export const handlers = [
       },
     }),
   ),
-  http.post(`${API_BASE}/ai/runs/run-test-1/cancel`, async () => HttpResponse.json({ data: { status: 'cancelled' } })),
+  http.post(`${API_BASE}/ai/runs/:runId/cancel`, async () => HttpResponse.json({ data: { status: 'cancelled' } })),
   http.post(`${API_BASE}/projects/:id/copilot-preferences`, async () => HttpResponse.json({ data: { saved: true } })),
   http.patch(`${API_BASE}/projects/:id/phase-data/2`, async () => HttpResponse.json({ data: { saved: true } })),
   http.post(`${API_BASE}/ai/chat`, async () =>
@@ -370,21 +695,40 @@ export const handlers = [
       },
     }),
   ),
-  http.post(`${API_BASE}/projects/:id/export`, async ({ request }) => {
-    let format = 'docx'
+  http.post(`${API_BASE}/projects/:id/export`, async ({ params, request }) => {
+    let body: { format?: string; phase?: number; includePhases?: number[] } = {}
     try {
-      const body = (await request.json()) as { format?: string }
-      format = body.format ?? 'docx'
+      body = (await request.json()) as { format?: string; phase?: number; includePhases?: number[] }
     } catch {
-      format = 'docx'
+      body = {}
     }
-    if (format === 'zip') {
+    if (body.format === 'zip' && body.phase === 4) {
       return new HttpResponse(new Blob([new Uint8Array([80, 75, 3, 4])], { type: 'application/zip' }), { status: 200 })
     }
-    return new HttpResponse(new Blob(['mock-docx'], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }), {
-      status: 200,
+    const now = new Date().toISOString()
+    return HttpResponse.json({
+      data: {
+        jobId: 'job-1',
+        status: 'processing',
+        format: body.format ?? 'docx',
+        downloadUrl: null,
+        createdAt: now,
+        completedAt: null,
+      },
     })
   }),
+  http.get(`${API_BASE}/projects/:id/export/:jobId`, async ({ params }) =>
+    HttpResponse.json({
+      data: {
+        jobId: String(params.jobId),
+        status: 'complete',
+        format: 'docx',
+        downloadUrl: 'https://s3.amazonaws.com/exports/test-export.docx',
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+    }),
+  ),
   http.get(`${API_BASE}/projects/:id/files`, async ({ params }) =>
     HttpResponse.json({
       data: mockProjectFiles.filter((f) => f.projectId === String(params.id)),
@@ -456,14 +800,32 @@ export const handlers = [
       },
     }),
   ),
+  http.get(`${API_BASE}/rag/documents`, async () => HttpResponse.json({ data: mockRagDocuments })),
+  http.post(`${API_BASE}/rag/documents`, async () =>
+    HttpResponse.json({ data: { docId: 'doc-new', status: 'processing', estimatedMs: 15000 } }),
+  ),
+  http.post(`${API_BASE}/rag/ingest-url`, async () =>
+    HttpResponse.json({ data: { docId: 'doc-url-1', status: 'processing' } }),
+  ),
+  http.delete(`${API_BASE}/rag/documents/:docId`, async ({ params }) => {
+    mockRagDocuments = mockRagDocuments.filter((d) => d.id !== String(params.docId))
+    return HttpResponse.json({ data: { deleted: true } })
+  }),
+  http.delete(`${API_BASE}/rag/namespace`, async () => {
+    mockRagDocuments = []
+    return HttpResponse.json({ data: { deleted: true, documentsRemoved: 2 } })
+  }),
   http.get(`${API_BASE}/rag/namespace`, async () =>
     HttpResponse.json({
       data: {
         namespace: 'user_test',
-        docCount: 2,
+        docCount: mockRagDocuments.length,
         docLimit: 5,
-        status: 'active',
-        lastIndexedAt: new Date().toISOString(),
+        chunkCount: 120,
+        chunkLimit: 500_000,
+        docUsagePercent: Math.min(100, (mockRagDocuments.length / 5) * 100),
+        status: mockRagDocuments.length ? 'active' : 'empty',
+        lastIndexedAt: mockRagDocuments.length ? new Date().toISOString() : null,
       },
     }),
   ),

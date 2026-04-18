@@ -13,7 +13,7 @@ export interface UpdateProjectPayload {
   description?: string
   emoji?: string
   isStarred?: boolean
-  status?: 'active' | 'archived'
+  status?: 'active' | 'archived' | 'launched'
 }
 
 export interface ProjectsListResponse {

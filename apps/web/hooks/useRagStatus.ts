@@ -20,6 +20,7 @@ export function useRagStatus(): RagDotStatus {
   })
 
   if (!data) return 'empty'
+  if (data.status === 'empty' || data.docCount === 0) return 'empty'
   if (data.status === 'active') return 'active'
   if (data.status === 'at_limit') return 'pending'
   return 'empty'

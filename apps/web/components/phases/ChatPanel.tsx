@@ -3,6 +3,8 @@
 import { RefreshCw, Send } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+import { cn } from '@/lib/utils'
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant' | 'system'
@@ -22,6 +24,8 @@ interface ChatPanelProps {
   isAgentRunning: boolean
   darkMode?: boolean
   className?: string
+  /** When set, replaces the draft in the input and focuses the textarea (e.g. “Fix this test”). */
+  draftMessage?: string | null
 }
 
 export function ChatPanel({
@@ -33,12 +37,23 @@ export function ChatPanel({
   isAgentRunning,
   darkMode = false,
   className = '',
+  draftMessage = null,
 }: ChatPanelProps): JSX.Element {
   const [text, setText] = useState('')
   const [isAtBottom, setIsAtBottom] = useState(true)
   const listRef = useRef<HTMLDivElement | null>(null)
   const endRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const [showNewMessageChip, setShowNewMessageChip] = useState(false)
+
+  useEffect(() => {
+    if (draftMessage == null || draftMessage === '') return
+    setText(draftMessage)
+    queueMicrotask(() => {
+      inputRef.current?.focus()
+      inputRef.current?.setSelectionRange(draftMessage.length, draftMessage.length)
+    })
+  }, [draftMessage])
 
   useEffect(() => {
     if (isAtBottom) {
@@ -69,13 +84,25 @@ export function ChatPanel({
     if (chatContext === 'flow') return 'Ask about user journey, flows, drop-off points...'
     if (chatContext === 'system') return 'Ask about tech stack, architecture, APIs...'
     if (chatContext === 'uiux') return 'Ask about screens, wireframes, design tokens...'
+    if (chatContext === 'growth') return 'Ask about acquisition, retention, and GTM...'
     return placeholder
   }, [chatContext, placeholder])
 
   return (
-    <aside className="flex h-full w-[320px] flex-shrink-0 flex-col rounded-r-xl bg-card shadow-md max-md:hidden">
-      <header className="flex h-12 items-center justify-between border-b border-divider px-3">
-        <p className="text-sm font-medium text-heading">{headerLabel}</p>
+    <aside
+      className={cn(
+        'flex h-full w-[320px] flex-shrink-0 flex-col rounded-r-xl bg-card shadow-md max-md:hidden md:flex',
+        darkMode && 'bg-slate-950',
+        className,
+      )}
+    >
+      <header
+        className={cn(
+          'flex h-12 items-center justify-between border-b px-3',
+          darkMode ? 'border-slate-700 bg-slate-900' : 'border-divider',
+        )}
+      >
+        <p className={`text-sm font-medium ${darkMode ? 'text-slate-200' : 'text-heading'}`}>{headerLabel}</p>
         <button type="button" aria-label="Clear chat history" className="text-muted">
           <RefreshCw size={16} />
         </button>
@@ -83,7 +110,7 @@ export function ChatPanel({
 
       <div
         ref={listRef}
-        className="relative flex-1 overflow-y-auto p-3"
+        className={cn('relative flex-1 overflow-y-auto p-3', darkMode && 'bg-slate-950')}
         onScroll={(event) => {
           const target = event.currentTarget
           const nearBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 20
@@ -160,6 +187,7 @@ export function ChatPanel({
       <div className={darkMode ? 'border-t border-slate-700 bg-slate-900 p-3' : 'border-t border-divider p-3'}>
         <div className="relative">
           <textarea
+            ref={inputRef}
             value={text}
             rows={Math.min(3, Math.max(1, text.split('\n').length))}
             placeholder={resolvedPlaceholder}

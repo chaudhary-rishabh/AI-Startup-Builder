@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom'
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest'
 
-import { resetMockProjectFiles } from './mocks/handlers'
+import { resetMockProjectFiles, resetMockRagDocuments } from './mocks/handlers'
 import { server } from './mocks/server'
 import { useUIStore } from '@/store/uiStore'
 import { MockEventSource } from './mocks/mockEventSource'
@@ -101,6 +101,7 @@ afterAll(() => server.close())
 
 beforeEach(() => {
   resetMockProjectFiles()
+  resetMockRagDocuments()
   MockEventSource.instances = []
   useUIStore.setState({
     sidebarCollapsed: false,

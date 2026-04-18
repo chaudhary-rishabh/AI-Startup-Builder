@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react'
 import { getPhaseRoute } from '@/api/projects.api'
 import { logout } from '@/api/auth.api'
 import { NewProjectModal } from '@/components/dashboard/NewProjectModal'
+import { RagModal } from '@/components/rag/RagModal'
 import { ModeToggle } from '@/components/layout/ModeToggle'
 import { useProjects } from '@/hooks/useProjects'
 import { useRagStatus } from '@/hooks/useRagStatus'
@@ -185,17 +186,7 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
       </aside>
 
       <NewProjectModal open={newProjectOpen} onClose={() => setNewProjectOpen(false)} />
-      {ragModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-sm rounded-card bg-card p-4 shadow-lg">
-            <h3 className="font-semibold text-heading">RAG coming in P38</h3>
-            <p className="mt-2 text-sm text-muted">Namespace controls and document indexing will be available in P38.</p>
-            <button className="mt-3 rounded-md bg-brand px-3 py-1.5 text-xs text-white" onClick={() => setRagModalOpen(false)}>
-              Close
-            </button>
-          </div>
-        </div>
-      ) : null}
+      <RagModal open={ragModalOpen} onOpenChange={setRagModalOpen} />
     </>
   )
 }
