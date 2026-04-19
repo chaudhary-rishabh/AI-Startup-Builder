@@ -1,0 +1,155 @@
+# CD — backend (containers → ECR → migrations → EKS / Helm)
+#
+# Triggers: push to main
+#
+# Secrets (never hardcode):
+#   AWS_ROLE_TO_ASSUME — IAM role ARN for GitHub OIDC (no AWS_ACCESS_KEY_ID)
+#   AWS_ACCOUNT_ID       — account ID (e.g. for ECR host construction in scripts)
+#   ECR_REGISTRY         — e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com
+#   DATABASE_URL         — for migration job
+#
+# Optional (health gate after deploy):
+#   STAGING_API_BASE_URL — base URL for GET {base}/health per service ingress, or single gateway health URL in BACKEND_HEALTH_URL
+#   BACKEND_HEALTH_URL   — single URL to verify after deploy (e.g. https://api.staging.example/health)
+#
+# Vars:
+#   EKS_CLUSTER_NAME — EKS cluster name for kubeconfig
+#   AWS_REGION       — defaults to us-east-1 in workflow
+#
+# Env:
+#   IMAGE_TAG = github.sha (set at workflow level)
+#
+name: CD Backend
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  IMAGE_TAG: ${{ github.sha }}
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+concurrency:
+  group: cd-backend-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-push:
+    name: Build & push images
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      image_tag: ${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # docker-bake.hcl must define targets for all 9 services; use ECR_REGISTRY + IMAGE_TAG in tags.
+      - name: Docker buildx bake (all 9 services, parallel) — push
+        env:
+          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        run: docker buildx bake --push -f docker-bake.hcl
+
+  migrate:
+    name: Database migrations
+    needs: [build-push]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run migrations (all services)
+        run: bash scripts/ci/run-migrations.sh
+
+  deploy:
+    name: Helm deploy to EKS
+    needs: [migrate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure kubeconfig (EKS)
+        run: aws eks update-kubeconfig --name "${{ vars.EKS_CLUSTER_NAME }}" --region "${{ env.AWS_REGION }}"
+
+      - name: Helm upgrade — all services (IMAGE_TAG = github.sha)
+        env:
+          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        run: |
+          chmod +x scripts/ci/helm-deploy.sh
+          bash scripts/ci/helm-deploy.sh
+
+      - name: Post-deploy smoke — HTTP /health within 5 minutes or Helm rollback
+        env:
+          BACKEND_HEALTH_URL: ${{ secrets.BACKEND_HEALTH_URL }}
+        timeout-minutes: 7
+        run: |
+          set -euo pipefail
+          if [ -z "${BACKEND_HEALTH_URL:-}" ]; then
+            echo "BACKEND_HEALTH_URL not set — skipping HTTP health gate (set secret to enforce)."
+            exit 0
+          fi
+          deadline=$((SECONDS + 300))
+          until [ $SECONDS -ge $deadline ]; do
+            code=$(curl -fsS -o /dev/null -w "%{http_code}" "$BACKEND_HEALTH_URL" || echo "000")
+            if [ "$code" = "200" ]; then
+              echo "Health check OK"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Health check failed for $BACKEND_HEALTH_URL after 5 minutes — rolling back"
+          SERVICES=(api-gateway auth-service billing-service user-service project-service ai-service analytics-service rag-service notification-service)
+          for s in "${SERVICES[@]}"; do
+            helm rollback "$s" --namespace user-services --wait --timeout 5m || true
+          done
+          exit 1

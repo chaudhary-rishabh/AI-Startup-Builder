@@ -1,42 +1,6 @@
-# ═══════════════════════════════════════════════════════════════════
-# CODEOWNERS — AI Startup Builder
-# These rules define who must approve PRs touching each path.
-# Rules are evaluated bottom-up; the last matching rule wins.
-# ═══════════════════════════════════════════════════════════════════
-
-# Default owner for all files not matched by a more specific rule
-*                                       @core-team
-
-# Infrastructure & deployment — devops owns all infra changes
-infra/terraform/**                      @devops-team
-infra/kubernetes/**                     @devops-team
-infra/helm/**                           @devops-team
-.github/workflows/**                    @devops-team
-
-# Billing service — sensitive financial code requires dual approval
-services/billing-service/**             @backend-team @finance-team
-
-# AI service — prompt engineering and agent architecture
-services/ai-service/**                  @ai-team
-
-# RAG service — vector pipeline and embedding logic
-services/rag-service/**                 @ai-team
-
-# Shared database schemas — all migration changes reviewed by backend
-packages/db/**                          @backend-team
-
-# Auth service — security-critical, all changes need review
-services/auth-service/**                @backend-team
-
-# Shared UI component library
-packages/ui/**                          @frontend-team
-
-# Shared TypeScript types — interface changes affect all consumers
-packages/types/**                       @core-team
-
-# Shared Zod validators — validation changes affect FE + BE
-packages/validators/**                  @core-team
-
-# Frontend applications
-apps/web/**                             @frontend-team
-apps/admin/**                           @frontend-team @backend-team
+infra/terraform/**           @devops-team
+services/billing-service/**  @backend-team @finance-team
+services/ai-service/**       @ai-team
+packages/db/**               @backend-team
+packages/ui/**               @frontend-team
+.github/workflows/**         @devops-team

@@ -1,64 +1,22 @@
 version: 2
 
 updates:
-  # ─────────────────────────────────────────────────────────────────
-  # npm — all JavaScript/TypeScript packages in the monorepo root
-  # Minor + patch updates are auto-merged via grouped PRs.
-  # Major version bumps always create individual PRs for review.
-  # ─────────────────────────────────────────────────────────────────
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: npm
+    directory: /
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "UTC"
-    open-pull-requests-limit: 10
+      interval: weekly
     groups:
       minor-and-patch:
         update-types:
-          - "minor"
-          - "patch"
-    ignore:
-      # Pin turbo to explicit version — bumps require manual validation
-      - dependency-name: "turbo"
-        update-types: ["version-update:semver-major"]
-    labels:
-      - "dependencies"
-      - "automerge"
-    commit-message:
-      prefix: "chore(deps)"
+          - minor
+          - patch
 
-  # ─────────────────────────────────────────────────────────────────
-  # Docker — base images for all microservices
-  # ─────────────────────────────────────────────────────────────────
-  - package-ecosystem: "docker"
-    directory: "/services"
+  - package-ecosystem: docker
+    directory: /services
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "UTC"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "docker"
-    commit-message:
-      prefix: "chore(docker)"
+      interval: weekly
 
-  # ─────────────────────────────────────────────────────────────────
-  # Terraform — provider and module version constraints
-  # ─────────────────────────────────────────────────────────────────
-  - package-ecosystem: "terraform"
-    directory: "/infra/terraform"
+  - package-ecosystem: terraform
+    directory: /infra/terraform
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "UTC"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "terraform"
-    commit-message:
-      prefix: "chore(infra)"
+      interval: weekly

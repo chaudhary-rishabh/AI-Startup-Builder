@@ -1,0 +1,118 @@
+# Security — scheduled scans + manual dispatch
+#
+# Secrets (never hardcode):
+#   SNYK_TOKEN           — Snyk API token (dependency + container scans)
+#   ZAP_STAGING_URL      — OWASP ZAP baseline target (staging API)
+#   AWS_ROLE_TO_ASSUME   — OIDC role to pull ECR images for Snyk container job
+#   ECR_REGISTRY         — registry host (same as CD backend)
+#
+name: Security
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  codeql:
+    name: CodeQL (JavaScript / TypeScript SAST)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  snyk-deps:
+    name: Snyk — dependency scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Snyk to check for issues
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=critical
+        # Fail on critical per workflow requirement
+
+  snyk-container:
+    name: Snyk — container images
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC) — pull from ECR
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Run Snyk container test (image from ECR)
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: ${{ secrets.ECR_REGISTRY }}/ai-startup-builder-api-gateway:latest
+          args: --severity-threshold=critical
+
+  zap-baseline:
+    name: OWASP ZAP — DAST (baseline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: ${{ secrets.ZAP_STAGING_URL }}
+          cmd_options: '-a'
+
+  pnpm-audit:
+    name: pnpm audit (critical only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Fail on critical vulnerabilities
+        run: pnpm audit --audit-level critical

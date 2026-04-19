@@ -1,0 +1,57 @@
+# Release — Changesets (version bump + publish + Release PR)
+#
+# Secrets:
+#   GITHUB_TOKEN — provided automatically; for changesets PR use PAT via GH_TOKEN if org requires it
+#   NPM_TOKEN    — if publishing public packages to npm (optional)
+#   GH_TOKEN     — PAT with repo contents + PR scope when GITHUB_TOKEN is insufficient for changesets/action
+#
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Changesets
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create Release PR or publish
+        uses: changesets/action@v1
+        with:
+          title: 'chore: version packages'
+          publish: pnpm changeset publish
+          commit: 'chore: version packages'
+        env:
+          # For elevated permissions (e.g. org rules), create a PAT and store it as repository secret GH_TOKEN,
+          # then replace the line below with: GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

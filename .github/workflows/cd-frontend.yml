@@ -1,0 +1,79 @@
+# CD — frontend (post-Vercel)
+#
+# Vercel deploys apps/web and apps/admin via Git integration on push to main.
+# This workflow runs after that deploy to verify production/preview and purge CDN.
+#
+# Secrets (never hardcode):
+#   VERCEL_PREVIEW_URL      — deployment URL to test (from Vercel integration or prior step output)
+#   CLOUDFRONT_INVALIDATION_API — full URL for POST that triggers CloudFront invalidation (e.g. API Gateway + Lambda)
+#   CLOUDFRONT_INVALIDATION_TOKEN — optional Bearer token for the invalidation API
+#
+# Optional:
+#   VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID — if you resolve preview URL via Vercel API instead of a static secret
+#
+name: CD Frontend
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: cd-frontend-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  post-deploy-smoke:
+    name: Post-deploy smoke (Playwright @smoke)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BASE_URL: ${{ secrets.VERCEL_PREVIEW_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers (Chromium only)
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Run smoke tests against Vercel URL
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ secrets.VERCEL_PREVIEW_URL }}
+        working-directory: apps/web
+        run: pnpm exec playwright test --project=chromium --grep @smoke
+
+  cdn-cache-purge:
+    name: CDN cache purge (CloudFront)
+    needs: [post-deploy-smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Purge CloudFront via API
+        env:
+          URL: ${{ secrets.CLOUDFRONT_INVALIDATION_API }}
+          TOKEN: ${{ secrets.CLOUDFRONT_INVALIDATION_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${URL:-}" ]; then
+            echo "CLOUDFRONT_INVALIDATION_API not set — skipping"
+            exit 0
+          fi
+          hdr=()
+          if [ -n "${TOKEN:-}" ]; then
+            hdr=(-H "Authorization: Bearer ${TOKEN}")
+          fi
+          curl -fsS -X POST "$URL" "${hdr[@]}" -H "Content-Type: application/json" -d '{"paths":["/*"]}'
