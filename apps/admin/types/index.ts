@@ -109,3 +109,268 @@ export interface AdminAPIError {
     service: string
   }
 }
+
+export type UserStatus = 'active' | 'suspended' | 'unverified'
+export type UserPlan = 'free' | 'pro' | 'team' | 'enterprise'
+
+export interface AdminUserRow {
+  id: string
+  name: string
+  email: string
+  avatarUrl: string | null
+  plan: UserPlan
+  projectCount: number
+  tokensUsedThisMonth: number
+  joinedAt: string
+  status: UserStatus
+  lastActiveAt: string | null
+}
+
+export interface AdminUserDetail extends AdminUserRow {
+  role: 'user' | 'admin'
+  bio: string | null
+  company: string | null
+  website: string | null
+  timezone: string
+  onboardingDone: boolean
+  totalTokensUsed: number
+  agentRunsTotal: number
+  agentRunsThisMonth: number
+  createdAt: string
+  updatedAt: string
+  adminNotes?: string | null
+  /** Per-user agent usage (when provided by API). */
+  topAgentBreakdown?: AIAgentBreakdown[]
+}
+
+export interface AdminUserProject {
+  id: string
+  name: string
+  emoji: string
+  currentPhase: number
+  status: 'active' | 'archived' | 'launched'
+  buildMode: 'autopilot' | 'copilot' | 'manual'
+  lastActiveAt: string
+  createdAt: string
+}
+
+export interface AdminUserLoginEvent {
+  id: string
+  ip: string
+  userAgent: string
+  location: string | null
+  success: boolean
+  failureReason: string | null
+  occurredAt: string
+}
+
+export interface AdminUserInvoice {
+  id: string
+  amountCents: number
+  currency: string
+  status: 'paid' | 'open' | 'void' | 'refunded'
+  plan: UserPlan
+  periodStart: string
+  periodEnd: string
+  invoiceUrl: string
+  createdAt: string
+}
+
+export interface UserFilterParams {
+  search: string
+  plan: UserPlan | 'all'
+  status: UserStatus | 'all'
+  dateFrom: string
+  dateTo: string
+  page: number
+  limit: number
+  sortBy: 'name' | 'email' | 'joinedAt' | 'tokensUsed' | 'projectCount'
+  sortOrder: 'asc' | 'desc'
+}
+
+export interface AdminRevenueSummary {
+  mrrCents: number
+  arrCents: number
+  churnRate: number
+  ltv: number
+  changes: {
+    mrr: number
+    arr: number
+    churnRate: number
+    ltv: number
+  }
+}
+
+export interface AdminPlan {
+  id: string
+  tier: string
+  name: string
+  priceMonthly: number
+  priceYearly: number
+  tokenLimit: number
+  projectLimit: number
+  features: string[]
+  userCount: number
+  monthlyRevenueCents: number
+  stripePriceId: string | null
+}
+
+export interface AdminTransaction {
+  id: string
+  userId: string
+  userName: string
+  userEmail: string
+  amountCents: number
+  currency: string
+  status: 'succeeded' | 'failed' | 'refunded' | 'pending'
+  plan: string
+  description: string | null
+  refundedAmountCents: number
+  invoicePdfUrl: string | null
+  createdAt: string
+}
+
+export interface AdminCoupon {
+  id: string
+  code: string
+  discountType: 'percent' | 'amount'
+  discountValue: number
+  maxUses: number | null
+  usedCount: number
+  expiresAt: string | null
+  stripeCouponId: string | null
+  createdAt: string
+}
+
+export interface AIUsageOverview {
+  tokensToday: number
+  tokensThisMonth: number
+  projectedCostUsd: number
+  costThisMonthUsd: number
+}
+
+export interface AITokenDataPoint {
+  date: string
+  tokens: number
+  costUsd: number
+}
+
+export interface AIModelBreakdown {
+  model: string
+  requests: number
+  tokens: number
+  avgLatencyMs: number
+  costUsd: number
+  sharePercent: number
+}
+
+export interface AITopUser {
+  userId: string
+  userName: string
+  userEmail: string
+  plan: UserPlan
+  tokensThisMonth: number
+  tokenLimit: number
+  percentOfLimit: number
+  projectedOverage: number
+}
+
+export interface AIAgentBreakdown {
+  agentType: string
+  tokens: number
+  requests: number
+  avgTokensPerRun: number
+  costUsd: number
+}
+
+export interface TokenLimitConfig {
+  plan: UserPlan
+  tokenLimit: number
+  isUnlimited: boolean
+}
+
+export interface AdminProject {
+  id: string
+  name: string
+  emoji: string
+  userId: string
+  userName: string
+  userEmail: string
+  currentPhase: number
+  status: 'active' | 'archived' | 'launched' | 'deleted'
+  buildMode: 'autopilot' | 'copilot' | 'manual'
+  agentRunCount: number
+  tokensUsed: number
+  lastActiveAt: string
+  createdAt: string
+  /** Phase outputs for admin read-only view (optional). */
+  phaseOutputs?: Record<string, unknown>
+}
+
+export interface AdminProjectFilterParams {
+  search: string
+  phase: number | 'all'
+  status: AdminProject['status'] | 'all'
+  buildMode: AdminProject['buildMode'] | 'all'
+  page: number
+  limit: number
+  sortBy: 'lastActiveAt' | 'createdAt' | 'name' | 'tokensUsed'
+  sortOrder: 'asc' | 'desc'
+}
+
+export type ServiceStatus = 'up' | 'degraded' | 'down'
+
+export interface ServiceHealthCard {
+  name: string
+  status: ServiceStatus
+  uptimePercent: number
+  lastIncidentAt: string | null
+  responseTimeMs: number
+  endpoint: string
+}
+
+export interface ErrorLogEntry {
+  id: string
+  severity: 'error' | 'warning' | 'critical'
+  type: string
+  endpoint: string
+  userId: string | null
+  userEmail: string | null
+  /** Full email for super-admin expanded view (optional). */
+  userEmailUnmasked?: string | null
+  message: string
+  stack: string | null
+  occurredAt: string
+}
+
+export interface LatencyDataPoint {
+  time: string
+  p50: number
+  p95: number
+  p99: number
+}
+
+export interface AuditLogEntry {
+  id: string
+  adminId: string
+  adminEmail: string
+  adminName: string
+  action: string
+  targetType: 'user' | 'project' | 'plan' | 'feature_flag' | 'prompt_template'
+  targetId: string
+  targetLabel: string
+  beforeState: Record<string, unknown> | null
+  afterState: Record<string, unknown> | null
+  ipAddress: string
+  userAgent: string
+  createdAt: string
+}
+
+export interface AuditLogFilter {
+  adminId: string | 'all'
+  action: string | 'all'
+  from: string
+  to: string
+  page: number
+  limit: number
+}
