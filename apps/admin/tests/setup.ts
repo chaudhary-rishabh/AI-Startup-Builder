@@ -101,6 +101,40 @@ vi.mock('recharts', async () => {
   }
 })
 
+vi.mock('@radix-ui/react-switch', () => ({
+  Root: vi.fn(
+    ({
+      checked,
+      onCheckedChange,
+      disabled,
+      children,
+      ...props
+    }: {
+      checked?: boolean
+      onCheckedChange?: (v: boolean) => void
+      disabled?: boolean
+      children?: React.ReactNode
+      [key: string]: unknown
+    }) =>
+      React.createElement(
+        'button',
+        {
+          type: 'button',
+          role: 'switch',
+          'aria-checked': checked,
+          disabled,
+          onClick: () => onCheckedChange?.(!checked),
+          'data-state': checked ? 'checked' : 'unchecked',
+          ...props,
+        },
+        children,
+      ),
+  ),
+  Thumb: vi.fn(({ children }: { children?: React.ReactNode }) =>
+    React.createElement('span', {}, children),
+  ),
+}))
+
 beforeEach(async () => {
   const { useAdminAuthStore } = await import('../store/adminAuthStore')
   useAdminAuthStore.setState({

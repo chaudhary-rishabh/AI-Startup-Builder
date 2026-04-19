@@ -1,4 +1,5 @@
 import { test as base, type Page } from '@playwright/test'
+import { installFullAdminApiMocks } from '../full-admin-api-mocks'
 
 interface AdminFixtures {
   adminPage: Page
@@ -6,6 +7,7 @@ interface AdminFixtures {
 
 export const test = base.extend<AdminFixtures>({
   adminPage: async ({ page, context }, use) => {
+    await installFullAdminApiMocks(page)
     await context.addCookies([
       {
         name: 'admin_token',

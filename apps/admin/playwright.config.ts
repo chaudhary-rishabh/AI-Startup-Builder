@@ -10,9 +10,9 @@ export default defineConfig({
   },
   webServer: {
     command: 'pnpm dev',
-    url: 'http://localhost:3001',
+    url: 'http://localhost:3001/admin/login',
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 300_000,
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

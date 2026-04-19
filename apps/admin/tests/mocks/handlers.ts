@@ -922,4 +922,300 @@ export const handlers = [
       },
     }),
   ),
+
+  // ── SETTINGS ──────────────────────────────────────────────────────────────
+  http.get(`${BASE}/admin/settings/general`, () =>
+    HttpResponse.json({
+      success: true,
+      data: {
+        platformName: 'AI Startup Builder',
+        supportEmail: 'support@aistartupbuilder.com',
+        timezone: 'America/New_York',
+        maintenanceMode: false,
+        maintenanceMessage: "We'll be back shortly.",
+        logoUrl: null,
+      },
+    }),
+  ),
+
+  http.patch(`${BASE}/admin/settings/general`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({ success: true, data: body })
+  }),
+
+  http.post(`${BASE}/admin/settings/logo`, () =>
+    HttpResponse.json({
+      success: true,
+      data: { logoUrl: 'https://cdn.example.com/logo.png' },
+    }),
+  ),
+
+  http.get(`${BASE}/admin/settings/email`, () =>
+    HttpResponse.json({
+      success: true,
+      data: {
+        provider: 'resend',
+        apiKey: 're_••••••••••••1234',
+        fromEmail: 'hello@aistartupbuilder.com',
+        fromName: 'AI Startup Builder',
+      },
+    }),
+  ),
+
+  http.patch(`${BASE}/admin/settings/email`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({ success: true, data: body })
+  }),
+
+  http.get(`${BASE}/admin/settings/email/templates`, () =>
+    HttpResponse.json({
+      success: true,
+      data: [
+        {
+          key: 'welcome',
+          subject: 'Welcome to AI Startup Builder 🚀',
+          previewText: "You're in! Here's how to get started...",
+        },
+        {
+          key: 'reset_password',
+          subject: 'Reset your password',
+          previewText: 'Click the link below to reset your password...',
+        },
+        {
+          key: 'billing_receipt',
+          subject: 'Your receipt from AI Startup Builder',
+          previewText: "Thank you for your payment. Here's your receipt...",
+        },
+        {
+          key: 'phase_complete',
+          subject: '🎉 Phase complete!',
+          previewText:
+            'Great work! Your project has advanced to the next phase...',
+        },
+        {
+          key: 'agent_done',
+          subject: '🤖 Your AI agent finished',
+          previewText: 'Your agent has finished generating results for...',
+        },
+        {
+          key: 'system_alert',
+          subject: '⚠️ System alert',
+          previewText:
+            "We've detected something that needs your attention...",
+        },
+      ],
+    }),
+  ),
+
+  http.post(`${BASE}/admin/settings/email/test`, () =>
+    HttpResponse.json({ success: true, data: { sent: true } }),
+  ),
+
+  http.get(`${BASE}/admin/settings/integrations`, () =>
+    HttpResponse.json({
+      success: true,
+      data: [
+        {
+          service: 'anthropic',
+          label: 'Anthropic (Claude API)',
+          apiKey: 'sk-ant-api03-••••••••••••••••1234',
+          isSet: true,
+          lastValidatedAt: new Date().toISOString(),
+          validationStatus: 'valid',
+        },
+        {
+          service: 'openai',
+          label: 'OpenAI (GPT-4o fallback)',
+          apiKey: 'sk-proj-••••••••••••••••5678',
+          isSet: true,
+          lastValidatedAt: new Date().toISOString(),
+          validationStatus: 'valid',
+        },
+        {
+          service: 'stripe',
+          label: 'Stripe (Billing)',
+          apiKey: 'sk_live_••••••••••••••••9012',
+          isSet: true,
+          lastValidatedAt: new Date().toISOString(),
+          validationStatus: 'valid',
+        },
+        {
+          service: 'github',
+          label: 'GitHub (OAuth + CI/CD)',
+          apiKey: 'ghp_••••••••••••••••3456',
+          isSet: true,
+          lastValidatedAt: null,
+          validationStatus: 'unchecked',
+        },
+        {
+          service: 'resend',
+          label: 'Resend (Email)',
+          apiKey: 're_••••••••••••7890',
+          isSet: true,
+          lastValidatedAt: new Date().toISOString(),
+          validationStatus: 'valid',
+        },
+        {
+          service: 'pinecone',
+          label: 'Pinecone (Vector DB)',
+          apiKey: '',
+          isSet: false,
+          lastValidatedAt: null,
+          validationStatus: 'unchecked',
+        },
+      ],
+    }),
+  ),
+
+  http.patch(`${BASE}/admin/settings/integrations/:service`, async ({
+    request,
+    params,
+  }) => {
+    await request.json()
+    const service = params['service'] as string
+    const labels: Record<string, string> = {
+      anthropic: 'Anthropic (Claude API)',
+      openai: 'OpenAI (GPT-4o fallback)',
+      stripe: 'Stripe (Billing)',
+      github: 'GitHub (OAuth + CI/CD)',
+      resend: 'Resend (Email)',
+      pinecone: 'Pinecone (Vector DB)',
+    }
+    return HttpResponse.json({
+      success: true,
+      data: {
+        service,
+        label: labels[service] ?? service,
+        apiKey: '••••••••••••new_key',
+        isSet: true,
+        lastValidatedAt: null,
+        validationStatus: 'unchecked',
+      },
+    })
+  }),
+
+  http.post(`${BASE}/admin/settings/integrations/:service/validate`, ({
+    params,
+  }) => {
+    const service = params['service'] as string
+    if (service === 'pinecone') {
+      return HttpResponse.json({
+        success: true,
+        data: {
+          valid: false,
+          message: 'No API key configured. Please add a key first.',
+        },
+      })
+    }
+    return HttpResponse.json({
+      success: true,
+      data: {
+        valid: true,
+        message: `✓ Key is valid — connected to ${service}`,
+      },
+    })
+  }),
+
+  http.get(`${BASE}/admin/settings/feature-flags`, () =>
+    HttpResponse.json({
+      success: true,
+      data: [
+        {
+          id: 'ff-1',
+          key: 'design_mode',
+          description: 'Enable Figma-style design canvas in Phase 3',
+          enabled: true,
+          rolloutPercent: 100,
+          planRestriction: [],
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: 'ff-2',
+          key: 'rag_ai',
+          description: 'Enable RAG document upload and retrieval for agents',
+          enabled: true,
+          rolloutPercent: 100,
+          planRestriction: ['pro', 'enterprise'],
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: 'ff-3',
+          key: 'growth_dashboard',
+          description: 'Phase 6 growth analytics dashboard',
+          enabled: true,
+          rolloutPercent: 100,
+          planRestriction: ['pro', 'enterprise'],
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: 'ff-4',
+          key: 'ai_code_export',
+          description: 'Export generated code as downloadable ZIP',
+          enabled: true,
+          rolloutPercent: 100,
+          planRestriction: ['pro', 'enterprise'],
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: 'ff-5',
+          key: 'multi_model_select',
+          description: 'Let users choose between Claude and GPT-4o',
+          enabled: false,
+          rolloutPercent: 0,
+          planRestriction: ['enterprise'],
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: 'ff-6',
+          key: 'team_collaboration',
+          description: 'Invite team members to a project (coming soon)',
+          enabled: false,
+          rolloutPercent: 0,
+          planRestriction: [],
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+    }),
+  ),
+
+  http.patch(`${BASE}/admin/settings/feature-flags/:flagId`, async ({
+    request,
+    params,
+  }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({
+      success: true,
+      data: {
+        id: params['flagId'],
+        ...body,
+        updatedAt: new Date().toISOString(),
+      },
+    })
+  }),
+
+  http.get(`${BASE}/admin/settings/security`, () =>
+    HttpResponse.json({
+      success: true,
+      data: {
+        force2FAForAdmins: true,
+        sessionTimeoutMinutes: 60,
+        ipAllowlist: ['203.0.113.0/24'],
+        apiRateLimitPerMinute: 100,
+        maxLoginAttempts: 3,
+        lockoutDurationMinutes: 15,
+      },
+    }),
+  ),
+
+  http.patch(`${BASE}/admin/settings/security`, async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({ success: true, data: body })
+  }),
+
+  http.post(`${BASE}/admin/settings/security/invalidate-sessions`, () =>
+    HttpResponse.json({
+      success: true,
+      data: { sessionsInvalidated: 4 },
+    }),
+  ),
 ]

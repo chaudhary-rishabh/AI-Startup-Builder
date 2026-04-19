@@ -374,3 +374,73 @@ export interface AuditLogFilter {
   page: number
   limit: number
 }
+
+// ── Platform Settings ────────────────────────────────────────────────────────
+export interface GeneralSettings {
+  platformName: string
+  supportEmail: string
+  timezone: string
+  maintenanceMode: boolean
+  maintenanceMessage: string
+  logoUrl: string | null
+}
+
+export interface EmailSettings {
+  provider: 'resend' | 'sendgrid' | 'smtp'
+  apiKey: string
+  fromEmail: string
+  fromName: string
+  smtpHost?: string
+  smtpPort?: number
+  smtpUsername?: string
+  smtpPassword?: string
+}
+
+export type EmailTemplateKey =
+  | 'welcome'
+  | 'reset_password'
+  | 'billing_receipt'
+  | 'phase_complete'
+  | 'agent_done'
+  | 'system_alert'
+
+export interface EmailTemplatePreview {
+  key: EmailTemplateKey
+  subject: string
+  previewText: string
+}
+
+export interface IntegrationKey {
+  service: 'anthropic' | 'openai' | 'stripe' | 'github' | 'resend' | 'pinecone'
+  label: string
+  apiKey: string
+  isSet: boolean
+  lastValidatedAt: string | null
+  validationStatus: 'valid' | 'invalid' | 'unchecked'
+}
+
+export interface FeatureFlag {
+  id: string
+  key: string
+  description: string
+  enabled: boolean
+  rolloutPercent: number
+  planRestriction: string[]
+  updatedAt: string
+}
+
+export interface SecuritySettings {
+  force2FAForAdmins: boolean
+  sessionTimeoutMinutes: number
+  ipAllowlist: string[]
+  apiRateLimitPerMinute: number
+  maxLoginAttempts: number
+  lockoutDurationMinutes: number
+}
+
+export type SettingsTab =
+  | 'general'
+  | 'email'
+  | 'integrations'
+  | 'feature-flags'
+  | 'security'
