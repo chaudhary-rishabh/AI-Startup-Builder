@@ -1,0 +1,13 @@
+replicaCount: 3
+
+resources:
+  requests:
+    cpu: 256m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+ingress:
+  enabled: true
+  host: api.aistartupbuilder.com

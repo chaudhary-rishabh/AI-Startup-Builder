@@ -1,0 +1,57 @@
+global:
+  imageRegistry: "000000000000.dkr.ecr.us-east-1.amazonaws.com"
+  imageTag: latest
+
+api-gateway:
+  image:
+    tag: latest
+  global:
+    imageRegistry: "000000000000.dkr.ecr.us-east-1.amazonaws.com"
+
+auth-service:
+  image:
+    tag: latest
+  global:
+    imageRegistry: "000000000000.dkr.ecr.us-east-1.amazonaws.com"
+
+user-service:
+  image:
+    tag: latest
+  global:
+    imageRegistry: "000000000000.dkr.ecr.us-east-1.amazonaws.com"
+
+project-service:
+  image:
+    tag: latest
+  global:
+    imageRegistry: "000000000000.dkr.ecr.us-east-1.amazonaws.com"
+
+ai-service:
+  image:
+    tag: latest
+  global:
+    imageRegistry: "000000000000.dkr.ecr.us-east-1.amazonaws.com"
+
+rag-service:
+  image:
+    tag: latest
+  global:
+    imageRegistry: "000000000000.dkr.ecr.us-east-1.amazonaws.com"
+
+billing-service:
+  image:
+    tag: latest
+  global:
+    imageRegistry: "000000000000.dkr.ecr.us-east-1.amazonaws.com"
+
+notification-service:
+  image:
+    tag: latest
+  global:
+    imageRegistry: "000000000000.dkr.ecr.us-east-1.amazonaws.com"
+
+analytics-service:
+  image:
+    tag: latest
+  global:
+    imageRegistry: "000000000000.dkr.ecr.us-east-1.amazonaws.com"

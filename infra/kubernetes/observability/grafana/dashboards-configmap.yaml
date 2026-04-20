@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: infra
+data:
+  service-overview.json: |
+    {"title":"Service Overview","schemaVersion":39,"version":1,"panels":[]}
+  ai-agent-metrics.json: |
+    {"title":"AI Agent Metrics","schemaVersion":39,"version":1,"panels":[]}
+  billing-kpis.json: |
+    {"title":"Billing KPIs","schemaVersion":39,"version":1,"panels":[]}

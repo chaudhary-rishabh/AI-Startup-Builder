@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: notification-service
+  namespace: user-services
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: notification-service
+  namespaceSelector:
+    matchNames:
+      - user-services
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s

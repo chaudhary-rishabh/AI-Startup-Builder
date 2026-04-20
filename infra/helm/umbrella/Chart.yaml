@@ -1,0 +1,35 @@
+apiVersion: v2
+name: ai-startup-builder
+description: Umbrella chart for AI Startup Builder backend services
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+dependencies:
+  - name: api-gateway
+    version: 0.1.0
+    repository: file://../api-gateway
+  - name: auth-service
+    version: 0.1.0
+    repository: file://../auth-service
+  - name: user-service
+    version: 0.1.0
+    repository: file://../user-service
+  - name: project-service
+    version: 0.1.0
+    repository: file://../project-service
+  - name: ai-service
+    version: 0.1.0
+    repository: file://../ai-service
+  - name: rag-service
+    version: 0.1.0
+    repository: file://../rag-service
+  - name: billing-service
+    version: 0.1.0
+    repository: file://../billing-service
+  - name: notification-service
+    version: 0.1.0
+    repository: file://../notification-service
+  - name: analytics-service
+    version: 0.1.0
+    repository: file://../analytics-service

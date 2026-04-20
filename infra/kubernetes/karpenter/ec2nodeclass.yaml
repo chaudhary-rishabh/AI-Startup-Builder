@@ -1,0 +1,13 @@
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  amiFamily: AL2
+  role: PLACEHOLDER_KARPENTER_NODE_IAM_ROLE_NAME
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: PLACEHOLDER_CLUSTER_NAME
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: PLACEHOLDER_CLUSTER_NAME

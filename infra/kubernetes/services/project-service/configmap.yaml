@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: project-service-config
+  namespace: user-services
+data:
+  LOG_LEVEL: info
+  NODE_ENV: production
+  AUTH_SERVICE_URL: http://auth-service.user-services.svc.cluster.local:8080
+  USER_SERVICE_URL: http://user-service.user-services.svc.cluster.local:8080
+  PROJECT_SERVICE_URL: http://project-service.user-services.svc.cluster.local:8080
+  AI_SERVICE_URL: http://ai-service.user-services.svc.cluster.local:8080
+  RAG_SERVICE_URL: http://rag-service.user-services.svc.cluster.local:8080
+  BILLING_SERVICE_URL: http://billing-service.user-services.svc.cluster.local:8080
+  NOTIFICATION_SERVICE_URL: http://notification-service.user-services.svc.cluster.local:8080
+  ANALYTICS_SERVICE_URL: http://analytics-service.user-services.svc.cluster.local:8080
