@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS billing.plans (
   token_limit_monthly BIGINT NOT NULL,
   project_limit INTEGER NOT NULL DEFAULT 3,
   api_key_limit INTEGER NOT NULL DEFAULT 2,
-  features TEXT[] NOT NULL DEFAULT '{}',
+  features TEXT[] NOT NULL DEFAULT '{}'::text[],
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   sort_order SMALLINT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS billing.subscriptions (
   user_id UUID NOT NULL REFERENCES auth.users(id),
   plan_id UUID NOT NULL REFERENCES billing.plans(id),
   stripe_customer_id VARCHAR(100) UNIQUE NOT NULL,
-  stripe_subscription_id VARCHAR(100) UNIQUE NULL,
+  stripe_subscription_id VARCHAR(100) NULL UNIQUE,
   status billing.sub_status_enum NOT NULL,
   billing_cycle VARCHAR(10) NULL,
   current_period_start TIMESTAMPTZ NULL,
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS billing.coupons (
   discount_value DECIMAL(10,2) NOT NULL,
   max_uses INTEGER NULL,
   used_count INTEGER NOT NULL DEFAULT 0,
-  valid_for_plans TEXT[] NOT NULL DEFAULT '{}',
+  valid_for_plans TEXT[] NOT NULL DEFAULT '{}'::text[],
   expires_at TIMESTAMPTZ NULL,
   stripe_coupon_id VARCHAR(100) NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

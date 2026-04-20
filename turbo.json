@@ -27,7 +27,8 @@
       "persistent": true
     },
     "db:migrate": {
-      "cache": false
+      "cache": false,
+      "dependsOn": ["^db:migrate"]
     },
     "db:generate": {
       "cache": false
