@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ai-service
+description: AI Startup Builder ai-service
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

@@ -1,0 +1,23 @@
+global:
+  imageRegistry: "000000000000.dkr.ecr.us-east-1.amazonaws.com"
+
+image:
+  repository: notification-service
+  tag: latest
+
+replicaCount: 2
+
+service:
+  port: 8080
+
+resources:
+  requests:
+    cpu: 256m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+ingress:
+  enabled: false
+  host: api.aistartupbuilder.com

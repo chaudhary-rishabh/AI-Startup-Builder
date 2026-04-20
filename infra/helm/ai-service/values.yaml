@@ -1,0 +1,23 @@
+global:
+  imageRegistry: "000000000000.dkr.ecr.us-east-1.amazonaws.com"
+
+image:
+  repository: ai-service
+  tag: latest
+
+replicaCount: 2
+
+service:
+  port: 8080
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+
+ingress:
+  enabled: false
+  host: api.aistartupbuilder.com
