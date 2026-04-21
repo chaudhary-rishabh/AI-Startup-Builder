@@ -21,6 +21,7 @@ coverage/
 # ─────────────────────────────────────────────────────────────────
 # Environment files — .env.example is intentionally committed
 # ─────────────────────────────────────────────────────────────────
+.env
 .env.local
 .env.keys
 .env.*.local

@@ -1,5 +1,6 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
+import type { MiddlewareHandler } from 'hono'
 
 import { env } from './config/env.js'
 import { corsMiddleware } from './middleware/cors.js'
@@ -10,7 +11,7 @@ import { logger } from './observability/logger.js'
 import type { ErrorResponse } from '@repo/types'
 
 import { authRoutes } from './routes/auth.routes.js'
-import { healthRoutes } from './routes/health.routes.js'
+import { buildLivenessPayload, healthRoutes } from './routes/health.routes.js'
 import { userRoutes } from './routes/user.routes.js'
 import { projectRoutes } from './routes/project.routes.js'
 import { aiRoutes } from './routes/ai.routes.js'
@@ -32,10 +33,20 @@ app.use('*', corsMiddleware)
 // 3. Security headers
 app.use('*', helmetMiddleware)
 
-// 4. Global IP-based rate limit baseline (catches bots before JWT processing)
-app.use('*', generalRateLimiter)
+// 4. Global IP-based rate limit baseline — skip for health and root ping so probes are never throttled
+const rateLimitUnlessHealthOrRoot: MiddlewareHandler = async (c, next) => {
+  const p = c.req.path
+  if (p === '/' || p === '/health' || p.startsWith('/health/')) {
+    return next()
+  }
+  return generalRateLimiter(c, next)
+}
+app.use('*', rateLimitUnlessHealthOrRoot)
 
 // ── Route mounting ─────────────────────────────────────────────────────────────
+/** Root GET — minimal liveness for load balancers that only hit `/`. */
+app.get('/', (c) => c.json(buildLivenessPayload()))
+
 // Public routes
 app.route('/health', healthRoutes)
 app.route('/auth', authRoutes)

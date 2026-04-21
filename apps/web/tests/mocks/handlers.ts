@@ -127,19 +127,47 @@ export const handlers = [
   http.post(`${API_BASE}/auth/login`, async () =>
     HttpResponse.json({
       data: {
-        user: { id: 'u1', email: 'test@example.com', name: 'Test User', role: 'user', plan: 'free' },
+        accessToken: 'mock-access-token',
+        refreshToken: 'mock-refresh-token',
+        expiresIn: 900,
+        user: {
+          id: 'u1',
+          email: 'test@example.com',
+          fullName: 'Test User',
+          role: 'user',
+          planTier: 'free',
+          onboardingCompleted: true,
+        },
       },
     }),
   ),
-  http.post(`${API_BASE}/auth/login/totp`, async () =>
+  http.post(`${API_BASE}/auth/2fa/verify`, async () =>
     HttpResponse.json({
       data: {
-        user: { id: 'u1', email: 'test@example.com', name: 'Test User', role: 'user', plan: 'free' },
+        accessToken: 'mock-access-token',
+        refreshToken: 'mock-refresh-token',
+        expiresIn: 900,
+        user: {
+          id: 'u1',
+          email: 'test@example.com',
+          fullName: 'Test User',
+          role: 'user',
+          planTier: 'free',
+          onboardingCompleted: true,
+        },
       },
     }),
   ),
   http.post(`${API_BASE}/auth/logout`, async () => HttpResponse.json({ data: {} })),
-  http.post(`${API_BASE}/auth/refresh`, async () => HttpResponse.json({ data: {} })),
+  http.post(`${API_BASE}/auth/refresh`, async () =>
+    HttpResponse.json({
+      data: {
+        accessToken: 'mock-access-token',
+        refreshToken: 'mock-refresh-token',
+        expiresIn: 900,
+      },
+    }),
+  ),
   http.post(`${API_BASE}/auth/forgot-password`, async () => HttpResponse.json({ data: {} })),
   http.get(`${API_BASE}/auth/me`, async () =>
     HttpResponse.json({

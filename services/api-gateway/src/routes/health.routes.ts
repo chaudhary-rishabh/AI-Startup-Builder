@@ -10,6 +10,21 @@ export function setHealthRedisForTests(r: Redis): void {
   _testRedis = r
 }
 
+export interface LivenessPayload {
+  status: 'ok'
+  service: 'api-gateway'
+  timestamp: string
+}
+
+/** Shared JSON for liveness probes (also used by GET / on the main app). */
+export function buildLivenessPayload(): LivenessPayload {
+  return {
+    status: 'ok',
+    service: 'api-gateway',
+    timestamp: new Date().toISOString(),
+  }
+}
+
 async function checkRedis(): Promise<'ok' | 'failed'> {
   try {
     if (_testRedis) {
@@ -30,20 +45,18 @@ async function checkRedis(): Promise<'ok' | 'failed'> {
 const health = new Hono()
 
 /**
- * GET /health
- * Always 200 — indicates the process is alive.
+ * GET /health — liveness (process is up). Same semantics as GET /health/live.
  */
-health.get('/health', (c) =>
-  c.json({
-    status: 'ok',
-    service: 'api-gateway',
-    timestamp: new Date().toISOString(),
-  }),
-)
+health.get('/', (c) => c.json(buildLivenessPayload()))
 
 /**
- * GET /ready
- * Checks actual dependencies (Redis). Returns 503 if any are unavailable.
+ * GET /health/live — explicit liveness for Kubernetes-style probes (alias of GET /health).
+ */
+health.get('/live', (c) => c.json(buildLivenessPayload()))
+
+/**
+ * GET /health/ready — readiness: verifies Redis (rate limits / shared infra).
+ * Returns 503 if Redis is unavailable.
  */
 health.get('/ready', async (c) => {
   const redisStatus = await checkRedis()

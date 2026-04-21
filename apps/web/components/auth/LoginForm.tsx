@@ -8,7 +8,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
-import { forgotPassword, login, loginWithTotp } from '@/api/auth.api'
+import { login, loginWithTotp } from '@/api/auth.api'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { ForgotPasswordForm } from '@/components/auth/ForgotPasswordForm'
 import { useAuthStore } from '@/store/authStore'
@@ -47,7 +47,7 @@ export function LoginForm(): JSX.Element {
     setInlineError(null)
     try {
       const result = await login(values)
-      if (result.requiresTwoFactor && result.tempToken) {
+      if (result.kind === 'mfa') {
         setTempToken(result.tempToken)
         return
       }
@@ -58,7 +58,7 @@ export function LoginForm(): JSX.Element {
         avatarUrl: null,
         role: result.user.role as 'user' | 'admin' | 'super_admin',
         plan: result.user.plan as 'free' | 'pro' | 'team' | 'enterprise',
-        onboardingDone: true,
+        onboardingDone: result.user.onboardingDone,
       })
       const redirectTarget =
         typeof window !== 'undefined' ? sessionStorage.getItem('post_auth_redirect') || '/dashboard' : '/dashboard'
@@ -69,11 +69,8 @@ export function LoginForm(): JSX.Element {
         setInlineError('Invalid email or password')
       } else if (appError.code === 'ACCOUNT_LOCKED') {
         setInlineError('Account locked due to too many attempts. Try again in 15 minutes.')
-      } else if (appError.code === 'ACCOUNT_NOT_VERIFIED') {
-        setInlineError('Please verify your email first. Resend verification →')
-        if (values.email) {
-          await forgotPassword(values.email)
-        }
+      } else if (appError.code === 'EMAIL_NOT_VERIFIED') {
+        setInlineError('Please verify your email first, then sign in.')
       } else {
         setInlineError('Unable to sign in right now.')
       }
@@ -98,7 +95,7 @@ export function LoginForm(): JSX.Element {
         avatarUrl: null,
         role: result.user.role as 'user' | 'admin' | 'super_admin',
         plan: result.user.plan as 'free' | 'pro' | 'team' | 'enterprise',
-        onboardingDone: true,
+        onboardingDone: result.user.onboardingDone,
       })
       router.push('/dashboard')
     } catch {

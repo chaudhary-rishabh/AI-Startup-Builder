@@ -35,6 +35,7 @@ export async function proxyRequest(
   const headers = new Headers()
 
   const forwardable = [
+    'authorization',
     'content-type',
     'accept',
     'accept-language',
@@ -43,6 +44,11 @@ export async function proxyRequest(
     'user-agent',
     'stripe-signature',
     'x-real-ip',
+    // OAuth popup detection on auth-service (isBrowserOAuthRedirect) relies on these
+    'sec-fetch-dest',
+    'sec-fetch-mode',
+    'sec-fetch-site',
+    'sec-fetch-user',
   ]
 
   for (const name of forwardable) {

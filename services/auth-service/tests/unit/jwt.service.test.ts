@@ -21,6 +21,8 @@ describe('jwt.service', () => {
       role: 'user',
       plan: 'free',
       email: 'a@b.com',
+      name: 'User One',
+      onboardingDone: false,
     })
     expect(token.split('.')).toHaveLength(3)
   })
@@ -31,6 +33,8 @@ describe('jwt.service', () => {
       role: 'user',
       plan: 'free',
       email: 'a@b.com',
+      name: 'User One',
+      onboardingDone: false,
     })
     const payload = await verifyAccessToken(token)
     expect(payload.sub).toBe('u1')
@@ -45,6 +49,8 @@ describe('jwt.service', () => {
       role: 'user',
       plan: 'free',
       email: 'a@b.com',
+      name: 'User One',
+      onboardingDone: false,
     })
     vi.setSystemTime(new Date('2025-01-01T00:00:10.000Z'))
     await expect(verifyAccessToken(token)).rejects.toThrow()
@@ -56,6 +62,8 @@ describe('jwt.service', () => {
       role: 'user',
       plan: 'free',
       email: 'a@b.com',
+      name: 'User One',
+      onboardingDone: false,
     })
     const parts = token.split('.')
     parts[2] = parts[2] === 'abc' ? 'def' : 'abc'
@@ -69,6 +77,8 @@ describe('jwt.service', () => {
       role: 'user',
       planTier: 'free',
       email: 'a@b.com',
+      fullName: 'User One',
+      onboardingCompleted: false,
     })
     expect(pair.accessToken.length).toBeGreaterThan(20)
     expect(pair.refreshToken.length).toBeGreaterThan(20)
@@ -88,6 +98,8 @@ describe('jwt.service', () => {
       role: 'user',
       plan: 'free',
       email: 'a@b.com',
+      name: 'User One',
+      onboardingDone: false,
     })
     await expect(verifyRefreshToken(token)).rejects.toThrow()
   })

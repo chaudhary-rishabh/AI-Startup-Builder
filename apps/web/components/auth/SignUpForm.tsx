@@ -24,7 +24,8 @@ const signUpSchema = z.object({
     .string()
     .min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
-    .regex(/[0-9]/, 'Must contain at least one number'),
+    .regex(/[0-9]/, 'Must contain at least one number')
+    .regex(/[^A-Za-z0-9]/, 'Must contain at least one special character'),
   terms: z.boolean().refine((value) => value, 'You must accept the terms'),
 })
 
@@ -42,6 +43,7 @@ export function SignUpForm(): JSX.Element {
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [registeredEmail, setRegisteredEmail] = useState<string | null>(null)
+  const [devOtpHint, setDevOtpHint] = useState<string | null>(null)
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [otpError, setOtpError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
@@ -71,16 +73,25 @@ export function SignUpForm(): JSX.Element {
     setIsSubmitting(true)
     setFormError(null)
     try {
-      await register(values)
+      const reg = await register(values)
       setRegisteredEmail(values.email)
+      setDevOtpHint(reg?.devOtp ?? null)
+      if (reg?.devOtp && process.env.NODE_ENV === 'development') {
+        console.info(`[DEV] Email verification code: ${reg.devOtp}`)
+      }
       addToast({
         type: 'success',
         title: 'Verification email sent',
-        message: 'Check your email for a 6-digit verification code',
+        message:
+          reg?.devOtp && process.env.NODE_ENV === 'development'
+            ? 'Your dev verification code is shown below this form.'
+            : 'Check your email for a 6-digit verification code',
       })
     } catch (error: unknown) {
       const appError = error as { code?: string; message?: string }
-      if (appError.code === 'ALREADY_EXISTS') {
+      if (appError.code === 'INVALID_RESPONSE') {
+        setFormError(appError.message ?? 'Could not reach the API. Check NEXT_PUBLIC_API_URL.')
+      } else if (appError.code === 'CONFLICT') {
         setFormError('An account with this email already exists')
       } else {
         addToast({
@@ -263,7 +274,14 @@ export function SignUpForm(): JSX.Element {
 
       {registeredEmail ? (
         <form className="space-y-3 rounded-card border border-divider bg-output p-4" onSubmit={onOtpSubmit}>
-          <p className="text-xs text-heading">Check your email for a 6-digit verification code</p>
+          {devOtpHint ? (
+            <div className="rounded-md border border-brand/30 bg-brand/5 p-3 text-center">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted">Development code</p>
+              <p className="mt-1 font-mono text-2xl font-semibold tracking-[0.35em] text-heading">{devOtpHint}</p>
+              <p className="mt-2 text-[11px] text-muted">This is only included when the API runs in development mode.</p>
+            </div>
+          ) : null}
+          <p className="text-xs text-heading">Enter the 6-digit verification code</p>
           <div className="flex gap-2">
             {otp.map((value, index) => (
               <input

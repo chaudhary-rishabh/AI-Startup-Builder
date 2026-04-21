@@ -19,6 +19,8 @@ const SCHEMAS = [
   'projects',
   'users',
   'auth',
+  /** Drizzle migration journal — must be reset when app schemas are dropped or migrate will skip SQL. */
+  'drizzle',
 ] as const
 
 function prompt(question: string): Promise<string> {

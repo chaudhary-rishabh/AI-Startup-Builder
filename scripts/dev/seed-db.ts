@@ -119,15 +119,35 @@ const phase2Crm: Phase2Output = {
 
 async function main(): Promise<void> {
   const root = getRepoRoot()
-  loadEnv({ path: join(root, '.env.local') })
+  // Prefer env already injected by `dotenv -e .env.local --` (matches `pnpm db:migrate`).
+  if (!process.env['DATABASE_URL']?.trim()) {
+    loadEnv({ path: join(root, '.env') })
+    loadEnv({ path: join(root, '.env.local'), override: true })
+  }
 
-  const databaseUrl = process.env['DATABASE_URL']
-  if (!databaseUrl) {
-    console.error(chalk.red('DATABASE_URL is not set. Add it to .env.local.'))
+  // Same default as service drizzle.config.ts files when DATABASE_URL is unset.
+  const databaseUrl =
+    process.env['DATABASE_URL']?.trim() || 'postgresql://postgres:devpassword@localhost:5432/aistartup'
+
+  const pool = new Pool({ connectionString: databaseUrl })
+
+  const billingReady = await pool.query<{ exists: boolean }>(
+    `SELECT EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'billing' AND table_name = 'plans'
+    ) AS exists`,
+  )
+  if (!billingReady.rows[0]?.exists) {
+    console.error(
+      chalk.red(
+        'Billing schema is missing (billing.plans). If you dropped schemas manually, the Drizzle journal may be stale.\n' +
+          '  Fix: DROP SCHEMA IF EXISTS drizzle CASCADE; then run: pnpm db:migrate\n' +
+          '  Or run a full reset: pnpm reset-db\n',
+      ),
+    )
     process.exit(1)
   }
 
-  const pool = new Pool({ connectionString: databaseUrl })
   const stripeFree = process.env['STRIPE_PRICE_ID_FREE_MONTHLY'] ?? ''
   const stripeProM = process.env['STRIPE_PRICE_ID_PRO_MONTHLY'] ?? ''
   const stripeProY = process.env['STRIPE_PRICE_ID_PRO_YEARLY'] ?? ''
@@ -161,18 +181,22 @@ async function main(): Promise<void> {
     await pool.query(
       `
       INSERT INTO users.user_profiles (
-        user_id, role_type, company_name, bio, timezone, notification_prefs, theme_prefs, created_at, updated_at
+        id, role_type, company_name, bio, timezone, notification_prefs, theme_prefs,
+        onboarding_step, onboarding_data, created_at, updated_at
       ) VALUES
         ($1, 'FOUNDER', 'AI Startup Builder Inc.', 'Platform admin', 'UTC',
          '{"emailOnPhaseComplete":true,"emailOnBilling":true,"inAppAll":true}'::jsonb,
-         '{"preferredMode":"design","sidebarCollapsed":false}'::jsonb, NOW(), NOW()),
+         '{"preferredMode":"design","sidebarCollapsed":false}'::jsonb,
+         'complete', '{}'::jsonb, NOW(), NOW()),
         ($2, 'FOUNDER', 'TechStartup Ltd', NULL, 'UTC',
          '{"emailOnPhaseComplete":true,"emailOnBilling":true,"inAppAll":true}'::jsonb,
-         '{"preferredMode":"design","sidebarCollapsed":false}'::jsonb, NOW(), NOW()),
+         '{"preferredMode":"design","sidebarCollapsed":false}'::jsonb,
+         'complete', '{}'::jsonb, NOW(), NOW()),
         ($3, 'DEVELOPER', NULL, NULL, 'UTC',
          '{"emailOnPhaseComplete":true,"emailOnBilling":true,"inAppAll":true}'::jsonb,
-         '{"preferredMode":"dev","sidebarCollapsed":false}'::jsonb, NOW(), NOW())
-      ON CONFLICT (user_id) DO NOTHING
+         '{"preferredMode":"dev","sidebarCollapsed":false}'::jsonb,
+         'complete', '{}'::jsonb, NOW(), NOW())
+      ON CONFLICT (id) DO NOTHING
       `,
       [IDS.adminUser, IDS.proUser, IDS.freeUser],
     )
@@ -182,19 +206,32 @@ async function main(): Promise<void> {
     await pool.query(
       `
       INSERT INTO billing.plans (
-        id, slug, display_name, price_monthly_usd_cents, price_yearly_usd_cents,
+        id, name, display_name, price_monthly_cents, price_yearly_cents,
         stripe_price_monthly_id, stripe_price_yearly_id,
-        token_limit_monthly, project_limit, features, is_active, created_at, updated_at
+        token_limit_monthly, project_limit, api_key_limit, features, is_active, sort_order, created_at
       ) VALUES
-        ($1, 'free', 'Free', 0, 0, $4, '', 50000, 3,
-         '["3 projects","50k tokens/mo"]'::jsonb, true, NOW(), NOW()),
-        ($2, 'pro', 'Pro', 2900, 29000, $5, $6, 500000, -1,
-         '["Unlimited projects","500k tokens/mo"]'::jsonb, true, NOW(), NOW()),
-        ($3, 'enterprise', 'Enterprise', 9900, 99000, $7, '', 2000000, -1,
-         '["Unlimited projects","2M tokens/mo","priority support"]'::jsonb, true, NOW(), NOW())
-      ON CONFLICT (slug) DO NOTHING
+        ($1, 'free', 'Free', 0, 0, NULLIF($4, ''), NULLIF($5, ''),
+         50000, 3, 2,
+         ARRAY['Phase 1 & 2 only','3 projects','50K tokens/month','2 API keys']::text[], true, 1, NOW()),
+        ($2, 'pro', 'Pro', 2900, 29000, NULLIF($6, ''), NULLIF($7, ''),
+         500000, 20, 10,
+         ARRAY['All 6 phases','20 projects','500K tokens/month','10 API keys','Code export','Priority support']::text[], true, 2, NOW()),
+        ($3, 'enterprise', 'Enterprise', 0, 0, NULLIF($8, ''), NULL,
+         -1, -1, -1,
+         ARRAY['Everything in Team','Unlimited tokens','Custom contracts','Dedicated support','SLA guarantees','SSO/SAML']::text[], true, 4, NOW())
+      ON CONFLICT (name) DO NOTHING
       `,
-      [IDS.planFree, IDS.planPro, IDS.planEnterprise, stripeFree, stripeProM, stripeProY, stripeEntM],
+      [
+        IDS.planFree,
+        IDS.planPro,
+        IDS.planEnterprise,
+        stripeFree,
+        '',
+        stripeProM,
+        stripeProY,
+        stripeEntM,
+        '',
+      ],
     )
     s.succeed(chalk.green('Plans upserted (billing.plans).'))
 
@@ -205,9 +242,9 @@ async function main(): Promise<void> {
         id, user_id, plan_id, stripe_customer_id, stripe_subscription_id, status,
         billing_cycle, cancel_at_period_end, created_at, updated_at
       ) VALUES
-        ($1, $2, $3, '', NULL, 'active', 'monthly', false, NOW(), NOW()),
-        ($4, $5, $6, '', NULL, 'active', 'monthly', false, NOW(), NOW()),
-        ($7, $8, $9, '', NULL, 'active', 'monthly', false, NOW(), NOW())
+        ($1, $2, $3, 'cus_seed_admin', NULL, 'active', 'monthly', false, NOW(), NOW()),
+        ($4, $5, $6, 'cus_seed_pro', NULL, 'active', 'monthly', false, NOW(), NOW()),
+        ($7, $8, $9, 'cus_seed_free', NULL, 'active', 'monthly', false, NOW(), NOW())
       ON CONFLICT (user_id) DO NOTHING
       `,
       [
@@ -251,7 +288,7 @@ async function main(): Promise<void> {
       ) VALUES
         ($1, $2, 1, $3::jsonb, 1, true, NOW()),
         ($4, $5, 2, $6::jsonb, 1, true, NOW())
-      ON CONFLICT (project_id, phase) DO NOTHING
+      ON CONFLICT (id) DO NOTHING
       `,
       [
         IDS.phaseOut1,
@@ -270,8 +307,8 @@ async function main(): Promise<void> {
       INSERT INTO billing.token_usage (
         id, user_id, month, tokens_used, tokens_limit, cost_usd, updated_at
       ) VALUES
-        ($1, $2, $3::date, 125000, 500000, '0.0000', NOW()),
-        ($4, $5, $3::date, 12000, 50000, '0.0000', NOW())
+        ($1, $2, $3::date, 125000::bigint, 500000::bigint, '0.0000', NOW()),
+        ($4, $5, $3::date, 12000::bigint, 50000::bigint, '0.0000', NOW())
       ON CONFLICT (user_id, month) DO NOTHING
       `,
       [IDS.tokPro, IDS.proUser, month, IDS.tokFree, IDS.freeUser],

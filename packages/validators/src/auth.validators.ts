@@ -27,9 +27,23 @@ export const RefreshTokenSchema = z.object({
   refreshToken: z.string().min(1),
 })
 
-export const VerifyEmailSchema = z.object({
-  token: z.string().min(1),
-})
+export const VerifyEmailSchema = z
+  .object({
+    email: z.string().email().toLowerCase().optional(),
+    otp: z.string().regex(/^\d{6}$/).optional(),
+    token: z.string().min(1).optional(),
+  })
+  .superRefine((data, ctx) => {
+    const otpMode = Boolean(data.email && data.otp)
+    const tokenMode = Boolean(data.token)
+    if (otpMode === tokenMode) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Provide either { email, otp } or { token }',
+        path: ['email'],
+      })
+    }
+  })
 
 export const ForgotPasswordSchema = z.object({
   email: z.string().email().toLowerCase(),

@@ -15,6 +15,49 @@ import { hashToken } from '../services/password.service.js'
 
 const oauth = new Hono()
 
+function isBrowserOAuthRedirect(c: {
+  req: {
+    header: (name: string) => string | undefined
+    path: string
+    query: (name: string) => string | undefined
+  }
+}): boolean {
+  // Google always redirects with ?code=&state= for the browser popup flow.
+  // When proxied, Sec-Fetch-* headers may be missing — still return HTML for the popup.
+  if (c.req.path.includes('oauth/google/callback') && c.req.query('code')) {
+    return true
+  }
+  return (
+    c.req.header('sec-fetch-mode') === 'navigate' ||
+    c.req.header('sec-fetch-dest') === 'document'
+  )
+}
+
+function mapPlanTier(tier: string): 'free' | 'pro' | 'team' | 'enterprise' {
+  if (tier === 'pro' || tier === 'team' || tier === 'enterprise') return tier
+  return 'free'
+}
+
+/** Minimal HTML page that posts OAuth result to opener and closes the popup (browser only). */
+function oauthPopupHtml(targetOrigin: string, message: Record<string, unknown>): string {
+  const json = JSON.stringify(message).replace(/</g, '\\u003c')
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"/><title>Google sign-in</title></head>
+<body>
+<script>
+(function(){
+  var p=${json};
+  try {
+    if(window.opener&&!window.opener.closed){window.opener.postMessage(p,${JSON.stringify(targetOrigin)});}
+  } catch(e){}
+  window.close();
+})();
+</script>
+<p>Signing in…</p>
+</body></html>`
+}
+
 oauth.get('/oauth/google', async (c) => {
   try {
     const { url, state } = await generateAuthUrl()
@@ -48,6 +91,15 @@ oauth.get('/oauth/google/callback', async (c) => {
     const result = await handleOAuthCallback(userInfo, tokens)
 
     if ('requiresMfa' in result && result.requiresMfa) {
+      if (isBrowserOAuthRedirect(c)) {
+        const targetOrigin = new URL(env.FRONTEND_APP_URL).origin
+        return c.html(
+          oauthPopupHtml(targetOrigin, {
+            type: 'GOOGLE_OAUTH_MFA',
+            mfaTempToken: result.mfaTempToken,
+          }),
+        )
+      }
       return ok(c, { requiresMfa: true, mfaTempToken: result.mfaTempToken })
     }
 
@@ -64,6 +116,27 @@ oauth.get('/oauth/google/callback', async (c) => {
       expiresAt,
     })
     await usersQueries.updateLastActive(user.id)
+
+    if (isBrowserOAuthRedirect(c)) {
+      const targetOrigin = new URL(env.FRONTEND_APP_URL).origin
+      return c.html(
+        oauthPopupHtml(targetOrigin, {
+          type: 'GOOGLE_OAUTH_SUCCESS',
+          accessToken: tokenPair.accessToken,
+          refreshToken: tokenPair.refreshToken,
+          expiresIn: tokenPair.expiresIn,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.fullName,
+            role: user.role,
+            plan: mapPlanTier(user.planTier),
+            onboardingDone: user.onboardingCompleted,
+          },
+          isNewUser,
+        }),
+      )
+    }
 
     return ok(c, {
       accessToken: tokenPair.accessToken,

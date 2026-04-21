@@ -122,6 +122,8 @@ describe('mfa routes', () => {
       role: 'user',
       plan: 'free',
       email: 'mfa@test.com',
+      name: 'Mfa User',
+      onboardingDone: false,
     })
     userMocks.findUserById.mockResolvedValue(baseUser({ passwordHash }))
 
@@ -142,6 +144,8 @@ describe('mfa routes', () => {
       role: 'user',
       plan: 'free',
       email: 'mfa@test.com',
+      name: 'Mfa User',
+      onboardingDone: false,
     })
     userMocks.findUserById.mockResolvedValue(baseUser({ passwordHash }))
     mfaMocks.findMfaByUserId.mockResolvedValue(undefined)
@@ -170,6 +174,8 @@ describe('mfa routes', () => {
       role: 'user',
       plan: 'free',
       email: 'mfa@test.com',
+      name: 'Mfa User',
+      onboardingDone: false,
     })
     mfaMocks.findMfaByUserId.mockResolvedValue({
       id: 'm1',
@@ -205,6 +211,8 @@ describe('mfa routes', () => {
       role: 'user',
       plan: 'free',
       email: 'mfa@test.com',
+      name: 'Mfa User',
+      onboardingDone: false,
     })
     mfaMocks.findMfaByUserId.mockResolvedValue({
       id: 'm1',
@@ -239,6 +247,8 @@ describe('mfa routes', () => {
       role: 'user',
       plan: 'free',
       email: 'mfa@test.com',
+      name: 'Mfa User',
+      onboardingDone: false,
     })
     userMocks.findUserById.mockResolvedValue(baseUser({ passwordHash }))
     mfaMocks.findMfaByUserId.mockResolvedValue({
@@ -306,6 +316,8 @@ describe('mfa routes', () => {
       role: 'user',
       plan: 'free',
       email: 'mfa@test.com',
+      name: 'Mfa User',
+      onboardingDone: false,
     })
     userMocks.findUserById.mockResolvedValue(baseUser({ passwordHash }))
     mfaMocks.findMfaByUserId.mockResolvedValue({

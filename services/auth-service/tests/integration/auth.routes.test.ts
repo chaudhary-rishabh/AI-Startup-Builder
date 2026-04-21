@@ -354,9 +354,9 @@ describe('auth routes', () => {
     })
 
     expect(res.status).toBe(200)
-    const json = (await res.json()) as { data: { requiresMfa?: boolean; mfaToken?: string } }
+    const json = (await res.json()) as { data: { requiresMfa?: boolean; mfaTempToken?: string } }
     expect(json.data.requiresMfa).toBe(true)
-    expect(json.data.mfaToken).toBeTruthy()
+    expect(json.data.mfaTempToken).toBeTruthy()
   })
 
   it('POST /auth/login with locked account → 423', async () => {

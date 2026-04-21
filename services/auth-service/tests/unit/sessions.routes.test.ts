@@ -38,6 +38,8 @@ describe('sessions routes', () => {
       role: 'user',
       planTier: 'free',
       email: 'u@test.com',
+      fullName: 'User One',
+      onboardingCompleted: false,
     })
     accessToken = tokens.accessToken
     findActiveTokensByUserId.mockResolvedValue([

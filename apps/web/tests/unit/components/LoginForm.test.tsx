@@ -6,8 +6,6 @@ import { LoginForm } from '@/components/auth/LoginForm'
 const mockPush = vi.fn()
 const mockLogin = vi.fn()
 const mockLoginWithTotp = vi.fn()
-const mockForgotPassword = vi.fn()
-
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }))
@@ -15,7 +13,6 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/api/auth.api', () => ({
   login: (...args: unknown[]) => mockLogin(...args),
   loginWithTotp: (...args: unknown[]) => mockLoginWithTotp(...args),
-  forgotPassword: (...args: unknown[]) => mockForgotPassword(...args),
 }))
 
 describe('LoginForm', () => {
@@ -23,7 +20,6 @@ describe('LoginForm', () => {
     mockPush.mockReset()
     mockLogin.mockReset()
     mockLoginWithTotp.mockReset()
-    mockForgotPassword.mockReset()
   })
 
   it('renders email + password fields', () => {
@@ -63,7 +59,19 @@ describe('LoginForm', () => {
     mockLogin.mockImplementation(
       () =>
         new Promise((resolve) => {
-          resolver = resolve as () => void
+          resolver = (): void => {
+            resolve({
+              kind: 'session',
+              user: {
+                id: 'u1',
+                email: 'test@example.com',
+                name: 'Test',
+                role: 'user',
+                plan: 'free',
+                onboardingDone: true,
+              },
+            })
+          }
         }),
     )
     render(<LoginForm />)

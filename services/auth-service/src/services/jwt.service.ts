@@ -17,12 +17,16 @@ export async function signAccessToken(payload: {
   role: string
   plan: string
   email: string
+  name: string
+  onboardingDone: boolean
 }): Promise<string> {
   return new SignJWT({
     sub: payload.sub,
     role: payload.role,
     plan: payload.plan,
     email: payload.email,
+    name: payload.name,
+    onboardingDone: payload.onboardingDone,
     type: 'access',
   })
     .setProtectedHeader({ alg: 'RS256' })
@@ -94,12 +98,16 @@ export async function generateTokenPair(user: {
   role: string
   planTier: string
   email: string
+  fullName: string
+  onboardingCompleted: boolean
 }): Promise<TokenPair> {
   const accessToken = await signAccessToken({
     sub: user.id,
     role: user.role,
     plan: user.planTier,
     email: user.email,
+    name: user.fullName,
+    onboardingDone: user.onboardingCompleted,
   })
   const refreshToken = await signRefreshToken({ sub: user.id })
   return {

@@ -255,6 +255,8 @@ export async function handleOAuthCallback(
     role: user.role,
     planTier: user.planTier,
     email: user.email,
+    fullName: user.fullName,
+    onboardingCompleted: user.onboardingCompleted,
   })
   return { user, isNewUser, tokenPair }
 }

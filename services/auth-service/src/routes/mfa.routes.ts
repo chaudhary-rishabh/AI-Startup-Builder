@@ -187,6 +187,8 @@ mfa.post(
       role: user.role,
       planTier: user.planTier,
       email: user.email,
+      fullName: user.fullName,
+      onboardingCompleted: user.onboardingCompleted,
     })
     const ip =
       c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ??
@@ -205,6 +207,14 @@ mfa.post(
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       expiresIn: tokens.expiresIn,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+        planTier: user.planTier,
+        onboardingCompleted: user.onboardingCompleted,
+      },
     })
   },
 )

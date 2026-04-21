@@ -82,9 +82,29 @@ function authHeader(token: string): Record<string, string> {
 
 describe('Integration: routing', () => {
   // ── Health endpoints ────────────────────────────────────────────────────────
-  describe('GET /health/health', () => {
+  describe('GET / (root liveness)', () => {
     it('returns 200 with status ok', async () => {
-      const res = await app.request('/health/health')
+      const res = await app.request('/')
+      expect(res.status).toBe(200)
+      const body = await res.json() as { status: string; service: string }
+      expect(body.status).toBe('ok')
+      expect(body.service).toBe('api-gateway')
+    })
+  })
+
+  describe('GET /health', () => {
+    it('returns 200 with status ok', async () => {
+      const res = await app.request('/health')
+      expect(res.status).toBe(200)
+      const body = await res.json() as { status: string; service: string }
+      expect(body.status).toBe('ok')
+      expect(body.service).toBe('api-gateway')
+    })
+  })
+
+  describe('GET /health/live', () => {
+    it('returns 200 with same liveness payload as /health', async () => {
+      const res = await app.request('/health/live')
       expect(res.status).toBe(200)
       const body = await res.json() as { status: string; service: string }
       expect(body.status).toBe('ok')
@@ -108,6 +128,33 @@ describe('Integration: routing', () => {
       const [calledUrl] = mockFetch.mock.calls[0] as [string, RequestInit]
       expect(calledUrl).toContain('localhost:4001')
       expect(calledUrl).toContain('/auth/login')
+    })
+  })
+
+  describe('GET /auth/me', () => {
+    it('proxies to auth-service and forwards Authorization', async () => {
+      const mockFetch = mockFetchOnce({
+        success: true,
+        data: {
+          id: 'user-123',
+          email: 'a@b.com',
+          name: 'Test',
+          role: 'user',
+          plan: 'free',
+          onboardingDone: true,
+        },
+      })
+
+      const res = await app.request('/auth/me', {
+        headers: { Authorization: 'Bearer test-access-token' },
+      })
+
+      expect(res.status).toBe(200)
+      expect(mockFetch).toHaveBeenCalledOnce()
+      const [calledUrl, calledInit] = mockFetch.mock.calls[0] as [string, RequestInit]
+      expect(calledUrl).toContain('/auth/me')
+      const sentHeaders = calledInit.headers as Headers
+      expect(sentHeaders.get('authorization')).toBe('Bearer test-access-token')
     })
   })
 
@@ -182,6 +229,7 @@ describe('Integration: routing', () => {
       // Gateway should inject user context headers — headers is a Headers instance
       const sentHeaders = calledInit.headers as Headers
       expect(sentHeaders.get('x-user-id')).toBe('user-123')
+      expect(sentHeaders.get('authorization')).toBe(`Bearer ${validToken}`)
     })
 
     it('GET /projects with valid JWT proxies to project-service', async () => {
@@ -232,6 +280,20 @@ describe('Integration: routing', () => {
       })
 
       expect(res.status).toBe(200)
+    })
+
+    it('GET /billing/token-usage with valid JWT proxies to billing-service', async () => {
+      const mockFetch = mockFetchOnce({ success: true, data: { tokensUsed: 0 } })
+
+      const res = await app.request('/billing/token-usage', {
+        headers: authHeader(validToken),
+      })
+
+      expect(res.status).toBe(200)
+      expect(mockFetch).toHaveBeenCalledOnce()
+      const [calledUrl] = mockFetch.mock.calls[0] as [string, RequestInit]
+      expect(calledUrl).toContain('localhost:4006')
+      expect(calledUrl).toContain('/billing/token-usage')
     })
 
     it('GET /notifications with valid JWT proxies to notification-service', async () => {
@@ -308,7 +370,7 @@ describe('Integration: routing', () => {
     })
 
     it('successful request includes Access-Control-Allow-Origin header', async () => {
-      const res = await app.request('/health/health', {
+      const res = await app.request('/health', {
         headers: { Origin: 'http://localhost:3000' },
       })
       expect(res.headers.get('Access-Control-Allow-Origin')).toBeTruthy()
@@ -318,12 +380,12 @@ describe('Integration: routing', () => {
   // ── Security headers ────────────────────────────────────────────────────────
   describe('Security headers (helmet)', () => {
     it('response includes X-Content-Type-Options: nosniff', async () => {
-      const res = await app.request('/health/health')
+      const res = await app.request('/health')
       expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff')
     })
 
     it('response includes X-Frame-Options: DENY', async () => {
-      const res = await app.request('/health/health')
+      const res = await app.request('/health')
       expect(res.headers.get('X-Frame-Options')).toBe('DENY')
     })
   })
@@ -341,7 +403,7 @@ describe('Integration: routing', () => {
   // ── Request-ID propagation ──────────────────────────────────────────────────
   describe('X-Request-ID', () => {
     it('every response includes X-Request-ID header', async () => {
-      const res = await app.request('/health/health')
+      const res = await app.request('/health')
       expect(res.headers.get('X-Request-ID')).toBeTruthy()
     })
   })

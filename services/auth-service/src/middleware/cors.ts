@@ -1,6 +1,6 @@
 import { cors } from 'hono/cors'
 
-const defaultOrigins = 'http://localhost:3000,http://localhost:3002'
+const defaultOrigins = 'http://localhost:3000,http://localhost:3001,http://localhost:3002'
 
 function parseOrigins(): string[] {
   const raw = process.env['ALLOWED_ORIGINS'] ?? defaultOrigins

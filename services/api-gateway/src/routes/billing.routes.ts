@@ -37,6 +37,7 @@ billing.get('/invoices', generalRateLimiter, async (c) => proxy(c))
 billing.get('/invoices/:invoiceId/download', generalRateLimiter, async (c) => proxy(c))
 billing.post('/coupons/validate', generalRateLimiter, async (c) => proxy(c))
 billing.get('/usage', generalRateLimiter, async (c) => proxy(c))
+billing.get('/token-usage', generalRateLimiter, async (c) => proxy(c))
 billing.post('/admin/refund', adminRateLimiter, async (c) => proxy(c))
 
 export { billing as billingRoutes }

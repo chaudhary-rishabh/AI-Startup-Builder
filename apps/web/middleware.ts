@@ -28,6 +28,12 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     return NextResponse.next()
   }
 
+  // Same-origin axios calls must not hit this guard when NEXT_PUBLIC_API_URL is misconfigured
+  // (e.g. POST /auth/register would otherwise 307 and break JSON parsing).
+  if (pathname.startsWith('/auth/')) {
+    return NextResponse.next()
+  }
+
   const token = request.cookies.get('access_token')?.value
   if (!token) {
     const url = request.nextUrl.clone()

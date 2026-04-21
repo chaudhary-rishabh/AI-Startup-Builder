@@ -107,6 +107,8 @@ admin.post(
       role: user.role,
       planTier: user.planTier,
       email: user.email,
+      fullName: user.fullName,
+      onboardingCompleted: user.onboardingCompleted,
     })
     const expiresAt = new Date(Date.now() + env.JWT_REFRESH_TOKEN_TTL * 1000)
     await refreshQueries.createRefreshToken({

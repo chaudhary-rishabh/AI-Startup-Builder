@@ -11,7 +11,7 @@ import {
 import { zValidator } from '@hono/zod-validator'
 import { and, eq } from 'drizzle-orm'
 import { Hono } from 'hono'
-import { randomUUID } from 'node:crypto'
+import { randomInt, randomUUID } from 'node:crypto'
 import { z } from 'zod'
 
 import { env } from '../config/env.js'
@@ -34,6 +34,7 @@ import {
   hashToken,
 } from '../services/password.service.js'
 import { publishUserPasswordReset, publishUserRegistered } from '../events/publisher.js'
+import { requireAuth } from './mfa.routes.js'
 
 const LogoutBodySchema = z.object({
   refreshToken: z.string().min(1),
@@ -46,6 +47,27 @@ function clientIp(c: { req: { header: (n: string) => string | undefined } }): st
 }
 
 const auth = new Hono()
+
+function mapPlanTierForMe(tier: string): 'free' | 'pro' | 'team' | 'enterprise' {
+  if (tier === 'pro' || tier === 'team' || tier === 'enterprise') return tier
+  return 'free'
+}
+
+auth.get('/me', requireAuth, async (c) => {
+  const userId = c.get('userId' as never) as string
+  const user = await usersQueries.findUserById(userId)
+  if (!user) {
+    return err(c, 404, 'NOT_FOUND', 'User not found')
+  }
+  return ok(c, {
+    id: user.id,
+    email: user.email,
+    name: user.fullName,
+    role: user.role,
+    plan: mapPlanTierForMe(user.planTier),
+    onboardingDone: user.onboardingCompleted,
+  })
+})
 
 auth.post(
   '/register',
@@ -75,7 +97,10 @@ auth.post(
     }
 
     const passwordHash = await hashPassword(body.password)
-    const emailVerificationToken = generateSecureToken()
+    const emailVerificationToken =
+      env.NODE_ENV === 'development'
+        ? String(randomInt(100_000, 1_000_000))
+        : generateSecureToken()
     const userId = randomUUID()
 
     const user = await usersQueries.createUser({
@@ -103,10 +128,17 @@ auth.post(
       console.error('[auth-service] Failed to publish user.registered event:', e)
     }
 
+    if (env.NODE_ENV === 'development') {
+      console.info(
+        `[auth-service][DEV] Email verification OTP for ${user.email}: ${emailVerificationToken}`,
+      )
+    }
+
     return created(c, {
       userId: user.id,
       email: user.email,
       message: 'Verification email sent',
+      ...(env.NODE_ENV === 'development' ? { devOtp: emailVerificationToken } : {}),
     })
   },
 )
@@ -167,8 +199,8 @@ auth.post(
     const mfa = await mfaQueries.findMfaByUserId(user.id)
     if (mfa?.isEnabled) {
       if (!body.totpCode) {
-        const mfaToken = await signMfaPendingToken(user.id)
-        return ok(c, { requiresMfa: true, mfaToken })
+        const mfaTempToken = await signMfaPendingToken(user.id)
+        return ok(c, { requiresMfa: true, mfaTempToken })
       }
       return err(
         c,
@@ -190,6 +222,8 @@ auth.post(
       role: user.role,
       planTier: user.planTier,
       email: user.email,
+      fullName: user.fullName,
+      onboardingCompleted: user.onboardingCompleted,
     })
 
     const expiresAt = new Date(Date.now() + env.JWT_REFRESH_TOKEN_TTL * 1000)
@@ -265,6 +299,8 @@ auth.post(
       role: user.role,
       planTier: user.planTier,
       email: user.email,
+      fullName: user.fullName,
+      onboardingCompleted: user.onboardingCompleted,
     })
 
     const newRow = await refreshQueries.createRefreshToken({
@@ -302,8 +338,16 @@ auth.post(
     if (!r.success) throw r.error
   }),
   async (c) => {
-    const { token } = c.req.valid('json')
-    const user = await usersQueries.findUserByEmailVerificationToken(token)
+    const body = c.req.valid('json')
+    let user: Awaited<ReturnType<typeof usersQueries.findUserByEmail>> | undefined
+    if (body.email !== undefined && body.otp !== undefined) {
+      const found = await usersQueries.findUserByEmail(body.email)
+      if (found?.emailVerificationToken === body.otp) {
+        user = found
+      }
+    } else if (body.token !== undefined) {
+      user = await usersQueries.findUserByEmailVerificationToken(body.token)
+    }
     if (!user) {
       return err(c, 400, 'INVALID_TOKEN', 'Invalid or expired verification token')
     }
