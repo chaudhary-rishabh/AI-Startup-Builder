@@ -311,6 +311,39 @@ async function handleRagFailed(payload: Record<string, unknown>): Promise<void> 
   })
 }
 
+async function handleCreditsExhausted(payload: Record<string, unknown>): Promise<void> {
+  const userEmail = String(payload['userEmail'] ?? payload['email'] ?? '')
+  if (!userEmail) return
+  await deliver({
+    userId: String(payload['userId'] ?? ''),
+    userEmail,
+    userName: String(payload['userName'] ?? payload['name'] ?? 'Founder'),
+    emailData: {
+      template: 'credits_exhausted',
+      props: { name: String(payload['userName'] ?? payload['name'] ?? 'Founder') },
+    },
+  })
+}
+
+async function handleCreditTopupCompleted(payload: Record<string, unknown>): Promise<void> {
+  const userEmail = String(payload['userEmail'] ?? payload['email'] ?? '')
+  if (!userEmail) return
+  await deliver({
+    userId: String(payload['userId'] ?? ''),
+    userEmail,
+    userName: String(payload['userName'] ?? payload['name'] ?? 'Founder'),
+    emailData: {
+      template: 'topup_receipt',
+      props: {
+        name: String(payload['userName'] ?? payload['name'] ?? 'Founder'),
+        amountPaise: Number(payload['amountPaise'] ?? 0),
+        tokensGranted: Number(payload['tokensGranted'] ?? 0),
+        packName: String(payload['packName'] ?? 'pack'),
+      },
+    },
+  })
+}
+
 async function handleExportCompleted(payload: Record<string, unknown>): Promise<void> {
   await deliver({
     userId: String(payload['userId'] ?? ''),
@@ -359,6 +392,10 @@ export async function processNotificationEvent(type: string, payload: Record<str
       return handleRagFailed(payload)
     case 'export.completed':
       return handleExportCompleted(payload)
+    case 'credits.exhausted':
+      return handleCreditsExhausted(payload)
+    case 'credit.topup.completed':
+      return handleCreditTopupCompleted(payload)
     default:
       logger.debug('Unhandled notification event type', { type })
   }

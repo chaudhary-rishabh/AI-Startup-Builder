@@ -564,7 +564,7 @@ export const handlers = [
   ),
 
   // ── AI USAGE ──────────────────────────────────────────────────────────────
-  http.get(`${BASE}/admin/ai-usage/overview`, () =>
+  http.get(`${BASE}/analytics/admin/ai-usage/overview`, () =>
     HttpResponse.json({
       success: true,
       data: {
@@ -572,6 +572,7 @@ export const handlers = [
         tokensThisMonth: 48200000,
         projectedCostUsd: 1842.3,
         costThisMonthUsd: 1204.8,
+        exhaustedUsersCount: 12,
       },
     }),
   ),

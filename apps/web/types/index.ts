@@ -1,3 +1,22 @@
+export type CreditState = 'active' | 'warning_80' | 'warning_95' | 'exhausted'
+
+export interface TokenBudget {
+  tokensUsed: number
+  tokensLimit: number
+  tokensRemaining: number
+  bonusTokens: number
+  effectiveLimit: number
+  effectiveRemaining: number
+  percentUsed: number
+  planTier: string
+  currentMonth: string
+  resetAt: string | null
+  isUnlimited: boolean
+  warningThresholds: Array<{ percent: number; triggered: boolean }>
+  creditState: CreditState
+  isOneTimeCredits: boolean
+}
+
 export interface User {
   id: string
   email: string

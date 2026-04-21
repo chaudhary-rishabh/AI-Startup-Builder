@@ -17,10 +17,10 @@ const m = vi.hoisted(() => ({
   getCurrentMonthUsage: vi.fn(),
   getOrCreateMonthlyUsage: vi.fn(),
   updateTokenLimit: vi.fn(),
-  createOrRetrieveCustomer: vi.fn(),
-  createCheckoutSession: vi.fn(),
-  cancelSubscriptionAtPeriodEnd: vi.fn(),
-  reactivateSubscription: vi.fn(),
+  createCustomer: vi.fn(),
+  createSubscription: vi.fn(),
+  cancelRazorpaySubscription: vi.fn(),
+  reactivateSubscriptionRazorpay: vi.fn(),
   validateCoupon: vi.fn(),
 }))
 
@@ -39,11 +39,16 @@ vi.mock('../../src/db/queries/tokenUsage.queries.js', () => ({
   getOrCreateMonthlyUsage: m.getOrCreateMonthlyUsage,
   updateTokenLimit: m.updateTokenLimit,
 }))
-vi.mock('../../src/services/stripe.service.js', () => ({
-  createOrRetrieveCustomer: m.createOrRetrieveCustomer,
-  createCheckoutSession: m.createCheckoutSession,
-  cancelSubscriptionAtPeriodEnd: m.cancelSubscriptionAtPeriodEnd,
-  reactivateSubscription: m.reactivateSubscription,
+vi.mock('../../src/services/razorpay.service.js', () => ({
+  createCustomer: m.createCustomer,
+  createSubscription: m.createSubscription,
+  cancelSubscription: m.cancelRazorpaySubscription,
+  reactivateSubscriptionRazorpay: m.reactivateSubscriptionRazorpay,
+  verifyWebhookSignature: vi.fn(),
+  verifyPaymentSignature: vi.fn(),
+  createTopUpOrder: vi.fn(),
+  createRefund: vi.fn(),
+  rzp: {},
 }))
 vi.mock('../../src/services/coupon.service.js', () => ({
   validateCoupon: m.validateCoupon,
@@ -64,13 +69,15 @@ describe('subscription.service', () => {
     m.getCurrentMonthUsage.mockResolvedValue({
       tokensUsed: BigInt(100),
       tokensLimit: BigInt(50000),
+      bonusTokens: BigInt(0),
     })
     m.getOrCreateMonthlyUsage.mockResolvedValue({
       tokensUsed: BigInt(100),
       tokensLimit: BigInt(50000),
+      bonusTokens: BigInt(0),
     })
-    m.createOrRetrieveCustomer.mockResolvedValue('cus_123')
-    m.createCheckoutSession.mockResolvedValue({ url: 'https://checkout', sessionId: 'cs_123' })
+    m.createCustomer.mockResolvedValue({ customerId: 'cust_123' })
+    m.createSubscription.mockResolvedValue({ subscriptionId: 'sub_123' })
   })
 
   it('createFreeSubscription creates customer and upserts row', async () => {
@@ -79,7 +86,7 @@ describe('subscription.service', () => {
       email: 'u@test.local',
       name: 'U',
     })
-    expect(m.createOrRetrieveCustomer).toHaveBeenCalled()
+    expect(m.createCustomer).toHaveBeenCalled()
     expect(m.upsertSubscription).toHaveBeenCalled()
   })
 
@@ -108,7 +115,9 @@ describe('subscription.service', () => {
       cancelAtPeriodEnd: false,
       cancelledAt: null,
       trialEnd: null,
-      stripeCustomerId: 'cus_1',
+      razorpayCustomerId: 'cust_1',
+      isOneTimeCredits: false,
+      signupCreditsGranted: false,
       createdAt: new Date(),
     })
     const view = await getUserSubscription('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee')
@@ -126,7 +135,7 @@ describe('subscription.service', () => {
   it('cancelSubscription throws ALREADY_CANCELLING', async () => {
     m.findSubscriptionByUserId.mockResolvedValue({
       id: 'sub_1',
-      stripeSubscriptionId: 'sub_1',
+      razorpaySubscriptionId: 'sub_raz_1',
       plan: { name: 'pro' },
       cancelAtPeriodEnd: true,
     })
@@ -151,7 +160,15 @@ describe('subscription.service', () => {
   })
 
   it('initiateCheckout throws ALREADY_SUBSCRIBED for same plan', async () => {
-    m.findPlanByName.mockResolvedValueOnce({ id: 'p_pro', name: 'pro' })
+    m.findPlanByName.mockResolvedValueOnce({
+      id: 'p_pro',
+      name: 'pro',
+      displayName: 'Pro',
+      tokenLimitMonthly: 500000,
+      projectLimit: 20,
+      apiKeyLimit: 10,
+      features: [],
+    })
     m.findSubscriptionByUserId.mockResolvedValue({
       id: 's1',
       userId: 'u',
@@ -170,7 +187,9 @@ describe('subscription.service', () => {
       cancelAtPeriodEnd: false,
       cancelledAt: null,
       trialEnd: null,
-      stripeCustomerId: 'cus_1',
+      razorpayCustomerId: 'cust_1',
+      isOneTimeCredits: false,
+      signupCreditsGranted: false,
       createdAt: new Date(),
     })
     await expect(

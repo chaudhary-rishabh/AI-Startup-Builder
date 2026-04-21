@@ -8,6 +8,13 @@
       "when": 1776310852169,
       "tag": "0001_init_billing",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776743000000,
+      "tag": "0002_razorpay_credits",
+      "breakpoints": true
     }
   ]
 }

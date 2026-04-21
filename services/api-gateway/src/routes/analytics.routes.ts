@@ -57,6 +57,7 @@ analytics.get('/funnel', requireAdmin, adminRateLimiter, async (c) => proxy(c))
 analytics.post('/reports/weekly-digest', requireAdmin, adminRateLimiter, async (c) => proxy(c))
 analytics.get('/admin/users', requireAdmin, adminRateLimiter, async (c) => proxy(c))
 analytics.get('/admin/overview', requireAdmin, adminRateLimiter, async (c) => proxy(c))
+analytics.get('/admin/ai-usage/overview', requireAdmin, adminRateLimiter, async (c) => proxy(c))
 analytics.get('/audit-logs', requireAdmin, adminRateLimiter, async (c) => proxy(c))
 
 export { analytics as analyticsRoutes }

@@ -1,6 +1,7 @@
 import { getRedis } from '../lib/redis.js'
 import { logger } from '../lib/logger.js'
 import { createFreeSubscription } from '../services/subscription.service.js'
+import { cancelReEngagementEmails, scheduleReEngagementEmails } from '../services/reEngagement.service.js'
 
 const STREAM = 'platform:events'
 const GROUP = 'billing-service-consumers'
@@ -79,6 +80,14 @@ export async function startBillingEventConsumer(): Promise<void> {
               name: payload.name,
             })
             logger.info('Free subscription created for new user', { userId: payload.userId })
+          }
+
+          if (evtType === 'subscription.upgraded' && payload?.userId) {
+            await cancelReEngagementEmails(payload.userId)
+          }
+
+          if (evtType === 'credits.exhausted' && payload?.userId) {
+            await scheduleReEngagementEmails(payload.userId)
           }
 
           await redis.xack(STREAM, GROUP, id)

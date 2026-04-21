@@ -33,8 +33,8 @@ export const plans = billingSchema.table(
     id: uuid('id').primaryKey().defaultRandom(),
     name: varchar('name', { length: 50 }).notNull(),
     displayName: varchar('display_name', { length: 100 }).notNull(),
-    priceMonthlyCents: integer('price_monthly_cents').notNull().default(0),
-    priceYearlyCents: integer('price_yearly_cents').notNull().default(0),
+    priceMonthlyPaise: integer('price_monthly_paise').notNull().default(0),
+    priceYearlyPaise: integer('price_yearly_paise').notNull().default(0),
     stripePriceMonthlyId: varchar('stripe_price_monthly_id', { length: 100 }),
     stripePriceYearlyId: varchar('stripe_price_yearly_id', { length: 100 }),
     stripeProductId: varchar('stripe_product_id', { length: 100 }),
@@ -58,8 +58,8 @@ export const subscriptions = billingSchema.table(
     id: uuid('id').primaryKey().defaultRandom(),
     userId: uuid('user_id').notNull(),
     planId: uuid('plan_id').notNull(),
-    stripeCustomerId: varchar('stripe_customer_id', { length: 100 }).notNull(),
-    stripeSubscriptionId: varchar('stripe_subscription_id', { length: 100 }),
+    razorpayCustomerId: varchar('razorpay_customer_id', { length: 100 }).notNull(),
+    razorpaySubscriptionId: varchar('razorpay_subscription_id', { length: 100 }),
     status: subStatusEnum('status').notNull(),
     billingCycle: varchar('billing_cycle', { length: 10 }),
     currentPeriodStart: timestamp('current_period_start', { withTimezone: true }),
@@ -67,13 +67,15 @@ export const subscriptions = billingSchema.table(
     cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
     cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
     trialEnd: timestamp('trial_end', { withTimezone: true }),
+    signupCreditsGranted: boolean('signup_credits_granted').notNull().default(false),
+    isOneTimeCredits: boolean('is_one_time_credits').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
     userUnique: uniqueIndex('billing_subscriptions_user_id_uniq').on(t.userId),
-    customerUnique: uniqueIndex('billing_subscriptions_customer_id_uniq').on(t.stripeCustomerId),
-    stripeSubUnique: uniqueIndex('billing_subscriptions_stripe_sub_id_uniq').on(t.stripeSubscriptionId),
+    customerUnique: uniqueIndex('billing_subscriptions_customer_id_uniq').on(t.razorpayCustomerId),
+    razorpaySubUnique: uniqueIndex('billing_subscriptions_stripe_sub_id_uniq').on(t.razorpaySubscriptionId),
     expiryIdx: index('billing_subscriptions_status_period_idx').on(t.status, t.currentPeriodEnd),
   }),
 )
@@ -87,8 +89,11 @@ export const transactions = billingSchema.table(
     stripeInvoiceId: varchar('stripe_invoice_id', { length: 100 }),
     stripeChargeId: varchar('stripe_charge_id', { length: 100 }),
     stripeEventId: varchar('stripe_event_id', { length: 100 }),
+    razorpayOrderId: varchar('razorpay_order_id', { length: 100 }),
+    razorpayPaymentId: varchar('razorpay_payment_id', { length: 100 }),
+    razorpaySubscriptionId: varchar('razorpay_subscription_id', { length: 100 }),
     amountCents: integer('amount_cents').notNull(),
-    currency: varchar('currency', { length: 3 }).notNull().default('usd'),
+    currency: varchar('currency', { length: 3 }).notNull().default('inr'),
     status: txStatusEnum('status').notNull(),
     description: text('description'),
     refundedAmountCents: integer('refunded_amount_cents').notNull().default(0),
@@ -130,12 +135,47 @@ export const tokenUsage = billingSchema.table(
     month: date('month').notNull(),
     tokensUsed: bigint('tokens_used', { mode: 'bigint' }).notNull().default(sql`0`),
     tokensLimit: bigint('tokens_limit', { mode: 'bigint' }).notNull(),
+    bonusTokens: bigint('bonus_tokens', { mode: 'bigint' }).notNull().default(sql`0`),
     costUsd: decimal('cost_usd', { precision: 10, scale: 4 }).notNull().default('0.0000'),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
     uniq: uniqueIndex('billing_token_usage_user_month_uniq').on(t.userId, t.month),
     userMonthIdx: index('billing_token_usage_user_month_idx').on(t.userId, t.month),
+  }),
+)
+
+export const creditTopups = billingSchema.table(
+  'credit_topups',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull(),
+    razorpayOrderId: varchar('razorpay_order_id', { length: 100 }).notNull().unique(),
+    razorpayPaymentId: varchar('razorpay_payment_id', { length: 100 }),
+    tokensGranted: bigint('tokens_granted', { mode: 'number' }).notNull(),
+    amountPaise: integer('amount_paise').notNull(),
+    status: varchar('status', { length: 20 }).notNull().default('pending'),
+    packName: varchar('pack_name', { length: 50 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+  },
+  (t) => ({
+    userIdx: index('idx_credit_topups_user').on(t.userId, t.status),
+  }),
+)
+
+export const reEngagementJobs = billingSchema.table(
+  're_engagement_jobs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull(),
+    sendAt: timestamp('send_at', { withTimezone: true }).notNull(),
+    template: varchar('template', { length: 50 }).notNull(),
+    status: varchar('status', { length: 20 }).notNull().default('pending'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userSendIdx: index('re_engagement_jobs_user_idx').on(t.userId, t.status),
   }),
 )
 
@@ -149,3 +189,5 @@ export type Coupon = typeof coupons.$inferSelect
 export type NewCoupon = typeof coupons.$inferInsert
 export type TokenUsage = typeof tokenUsage.$inferSelect
 export type NewTokenUsage = typeof tokenUsage.$inferInsert
+export type CreditTopup = typeof creditTopups.$inferSelect
+export type NewCreditTopup = typeof creditTopups.$inferInsert

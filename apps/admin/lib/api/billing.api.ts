@@ -98,3 +98,12 @@ export async function createCoupon(payload: {
 export async function deleteCoupon(couponId: string): Promise<void> {
   await api.delete(`/admin/billing/coupons/${couponId}`)
 }
+
+export async function grantBonusCredits(payload: {
+  userId: string
+  tokensToGrant: number
+  reason: string
+}): Promise<{ newBonusTotal: number }> {
+  const body: unknown = await api.post('/billing/admin/grant-credits', payload)
+  return unwrap<{ newBonusTotal: number }>(body)
+}

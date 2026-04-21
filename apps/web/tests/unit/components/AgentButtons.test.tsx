@@ -3,6 +3,20 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const triggers: Record<string, ReturnType<typeof vi.fn>> = {}
+const mockCredit = vi.hoisted(() => ({ isExhausted: false }))
+
+vi.mock('@/components/providers/CreditStateProvider', () => ({
+  useCreditState: () => ({
+    isExhausted: mockCredit.isExhausted,
+    isWarning: false,
+    creditState: mockCredit.isExhausted ? 'exhausted' : 'active',
+    effectiveRemaining: 0,
+    planTier: 'free',
+    isOneTimeCredits: true,
+    resetAt: null,
+    currentMonth: '2026-04',
+  }),
+}))
 
 vi.mock('@/hooks/useAgentRun', () => ({
   useAgentRun: (opts: { agentType: string }) => {
@@ -66,5 +80,15 @@ describe('AgentButtons', () => {
     render(<AgentButtons {...base} buildMode="copilot" autopilotStart={false} />)
     const api = screen.getByTestId('agent-btn-api_gen')
     expect(api.className).toMatch(/opacity-40/)
+  })
+
+  it('disables all 5 agent buttons when credits exhausted', () => {
+    mockCredit.isExhausted = true
+    render(<AgentButtons {...base} buildMode="copilot" autopilotStart={false} />)
+    for (const key of ['schema_gen', 'api_gen', 'backend', 'frontend', 'integration']) {
+      expect(screen.getByTestId(`agent-btn-${key}`)).toBeDisabled()
+    }
+    expect(screen.getByText(/Your free credits have been used/i)).toBeInTheDocument()
+    mockCredit.isExhausted = false
   })
 })

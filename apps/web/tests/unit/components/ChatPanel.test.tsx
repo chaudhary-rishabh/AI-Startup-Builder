@@ -3,12 +3,44 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { ChatPanel } from '@/components/phases/ChatPanel'
 
+const mockCredit = vi.hoisted(() => ({ isExhausted: false }))
+vi.mock('@/components/providers/CreditStateProvider', () => ({
+  useCreditState: () => ({
+    isExhausted: mockCredit.isExhausted,
+    isWarning: false,
+    creditState: mockCredit.isExhausted ? 'exhausted' : 'active',
+    effectiveRemaining: 1000,
+    planTier: 'free',
+    isOneTimeCredits: true,
+    resetAt: null,
+    currentMonth: '2026-04',
+  }),
+}))
+
 const baseMessages = [
   { id: '1', role: 'user' as const, content: 'hello', timestamp: new Date() },
   { id: '2', role: 'assistant' as const, content: 'hi there', timestamp: new Date() },
 ]
 
 describe('ChatPanel', () => {
+  it('disables send when credits exhausted', () => {
+    mockCredit.isExhausted = true
+    render(
+      <ChatPanel
+        projectId="p1"
+        phase={1}
+        headerLabel="Test"
+        placeholder="Describe..."
+        onSend={vi.fn()}
+        messages={[]}
+        isAgentRunning={false}
+      />,
+    )
+    expect(screen.getByPlaceholderText(/add credits to continue chatting/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /send message/i })).toBeDisabled()
+    mockCredit.isExhausted = false
+  })
+
   it('renders header and message sides', () => {
     render(
       <ChatPanel

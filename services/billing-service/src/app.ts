@@ -13,6 +13,7 @@ import internalRoutes from './routes/internal.routes.js'
 import plansRoutes from './routes/plans.routes.js'
 import subscriptionRoutes from './routes/subscription.routes.js'
 import tokenUsageRoutes from './routes/tokenUsage.routes.js'
+import topupRoutes from './routes/topup.routes.js'
 import webhookRoutes from './routes/webhook.routes.js'
 
 export function createApp(): Hono {
@@ -34,6 +35,7 @@ export function createApp(): Hono {
   app.route('/billing', checkoutRoutes)
   app.route('/billing', invoicesRoutes)
   app.route('/billing', tokenUsageRoutes)
+  app.route('/billing', topupRoutes)
   app.route('/billing', couponsRoutes)
   app.route('/billing', adminRoutes)
   app.route('/internal', internalRoutes)

@@ -7,6 +7,9 @@ import { createEmailLog, findRecentEmailLog } from '../db/queries/emailLogs.quer
 import { AppError } from '../lib/errors.js'
 import { logger } from '../lib/logger.js'
 import BillingReceiptEmail, { billingReceiptSubject } from '../templates/BillingReceiptEmail.js'
+import CreditsExhaustedEmail, { creditsExhaustedSubject } from '../templates/CreditsExhaustedEmail.js'
+import CreditsWelcomeEmail, { creditsWelcomeSubject } from '../templates/CreditsWelcomeEmail.js'
+import TopupReceiptEmail, { topupReceiptSubject } from '../templates/TopupReceiptEmail.js'
 import EmailVerificationEmail, { emailVerificationSubject } from '../templates/EmailVerificationEmail.js'
 import ExportReadyEmail, { exportReadySubject } from '../templates/ExportReadyEmail.js'
 import PasswordResetEmail, { passwordResetSubject } from '../templates/PasswordResetEmail.js'
@@ -62,6 +65,22 @@ const TEMPLATES: Record<string, TemplateEntry> = {
   billing_receipt: {
     component: BillingReceiptEmail,
     subject: (props) => billingReceiptSubject({ planName: String(props['planName'] ?? 'Pro') }),
+  },
+  credits_welcome: {
+    component: CreditsWelcomeEmail,
+    subject: () => creditsWelcomeSubject,
+  },
+  credits_exhausted: {
+    component: CreditsExhaustedEmail,
+    subject: () => creditsExhaustedSubject,
+  },
+  topup_receipt: {
+    component: TopupReceiptEmail,
+    subject: (props) =>
+      topupReceiptSubject({
+        amountPaise: Number(props['amountPaise'] ?? 0),
+        tokensGranted: Number(props['tokensGranted'] ?? 0),
+      }),
   },
   token_warning_80: {
     component: TokenWarningEmail,

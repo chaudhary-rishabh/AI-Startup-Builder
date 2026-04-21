@@ -271,13 +271,14 @@ export async function installFullAdminApiMocks(page: Page) {
     }
 
     // ── AI usage ───────────────────────────────────────────────────────────
-    if (method === 'GET' && path.startsWith('/admin/ai-usage/overview')) {
+    if (method === 'GET' && path.startsWith('/analytics/admin/ai-usage/overview')) {
       return route.fulfill(
         ok({
           tokensToday: 2847000,
           tokensThisMonth: 48200000,
           projectedCostUsd: 1842.3,
           costThisMonthUsd: 1204.8,
+          exhaustedUsersCount: 12,
         }),
       )
     }

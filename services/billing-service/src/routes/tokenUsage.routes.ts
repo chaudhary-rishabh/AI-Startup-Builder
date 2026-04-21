@@ -1,3 +1,4 @@
+import type { Context } from 'hono'
 import { Hono } from 'hono'
 
 import { err, ok } from '../lib/response.js'
@@ -16,13 +17,16 @@ async function rateLimitOk(userId: string, bucket: string, max: number, windowSe
   return n <= max
 }
 
-routes.get('/token-usage', async (c) => {
+async function budgetGet(c: Context) {
   const userId = c.get('userId' as never) as string
   if (!(await rateLimitOk(userId, 'token-usage', 60, 60))) {
     return err(c, 429, 'RATE_LIMIT', 'Too many requests')
   }
   const usage = await getTokenBudget(userId)
   return ok(c, usage)
-})
+}
+
+routes.get('/token-usage', budgetGet)
+routes.get('/token-budget', budgetGet)
 
 export default routes

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 
 import { TokenBudgetBanner } from '@/components/common/TokenBudgetBanner'
 import { TokenBudgetWatcher } from '@/components/common/TokenBudgetWatcher'
+import { CreditStateProvider } from '@/components/providers/CreditStateProvider'
 import { QueryProvider } from '@/providers/QueryProvider'
 import { ThemeProvider } from '@/providers/ThemeProvider'
 import { ToastProvider } from '@/providers/ToastProvider'
@@ -34,13 +35,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }):
       </head>
       <body>
         <QueryProvider>
-          <ThemeProvider>
-            <ToastProvider>
-              <TokenBudgetWatcher />
-              <TokenBudgetBanner />
-              {children}
-            </ToastProvider>
-          </ThemeProvider>
+          <CreditStateProvider>
+            <ThemeProvider>
+              <ToastProvider>
+                <TokenBudgetWatcher />
+                <TokenBudgetBanner />
+                {children}
+              </ToastProvider>
+            </ThemeProvider>
+          </CreditStateProvider>
         </QueryProvider>
       </body>
     </html>

@@ -87,3 +87,18 @@ export async function publishSubscriptionActivated(payload: {
 }): Promise<void> {
   await publish('subscription.activated', payload)
 }
+
+export async function publishCreditTopupCompleted(payload: {
+  userId: string
+  tokensGranted: number
+  packName: string
+  amountPaise: number
+  userEmail?: string
+  userName?: string
+}): Promise<void> {
+  await publish('credit.topup.completed', payload)
+}
+
+export async function publishCreditsExhausted(payload: { userId: string; planTier: string }): Promise<void> {
+  await publish('credits.exhausted', payload)
+}

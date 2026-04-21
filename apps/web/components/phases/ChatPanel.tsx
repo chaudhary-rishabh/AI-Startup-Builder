@@ -1,8 +1,11 @@
 'use client'
 
+import * as Tooltip from '@radix-ui/react-tooltip'
 import { RefreshCw, Send } from 'lucide-react'
+import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+import { useCreditState } from '@/components/providers/CreditStateProvider'
 import { cn } from '@/lib/utils'
 
 export interface ChatMessage {
@@ -39,6 +42,7 @@ export function ChatPanel({
   className = '',
   draftMessage = null,
 }: ChatPanelProps): JSX.Element {
+  const { isExhausted } = useCreditState()
   const [text, setText] = useState('')
   const [isAtBottom, setIsAtBottom] = useState(true)
   const listRef = useRef<HTMLDivElement | null>(null)
@@ -66,7 +70,7 @@ export function ChatPanel({
 
   const submit = (): void => {
     const value = text.trim()
-    if (!value || isAgentRunning) return
+    if (!value || isAgentRunning || isExhausted) return
     onSend(value)
     setText('')
   }
@@ -80,13 +84,14 @@ export function ChatPanel({
   }, [messages])
 
   const resolvedPlaceholder = useMemo(() => {
+    if (isExhausted) return 'Your credits have been used — add credits to continue chatting'
     if (chatContext === 'prd') return 'Ask about features, user stories, priorities...'
     if (chatContext === 'flow') return 'Ask about user journey, flows, drop-off points...'
     if (chatContext === 'system') return 'Ask about tech stack, architecture, APIs...'
     if (chatContext === 'uiux') return 'Ask about screens, wireframes, design tokens...'
     if (chatContext === 'growth') return 'Ask about acquisition, retention, and GTM...'
     return placeholder
-  }, [chatContext, placeholder])
+  }, [chatContext, placeholder, isExhausted])
 
   return (
     <aside
@@ -189,6 +194,7 @@ export function ChatPanel({
           <textarea
             ref={inputRef}
             value={text}
+            disabled={isExhausted}
             rows={Math.min(3, Math.max(1, text.split('\n').length))}
             placeholder={resolvedPlaceholder}
             onChange={(event) => setText(event.target.value)}
@@ -204,18 +210,41 @@ export function ChatPanel({
                 : 'max-h-[96px] min-h-[44px] w-full resize-none rounded-full border-[1.5px] border-divider bg-bg px-4 py-3 pr-12 text-sm focus:border-brand'
             }
           />
-          <button
-            type="button"
-            aria-label="Send message"
-            disabled={!text.trim() || isAgentRunning}
-            onClick={submit}
-            className={`absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-white disabled:opacity-50 ${
-              darkMode ? 'bg-[#0D9488]' : 'bg-brand'
-            }`}
-          >
-            <Send size={14} />
-          </button>
-          {text.length > 200 ? (
+          <Tooltip.Provider delayDuration={200}>
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>
+                <button
+                  type="button"
+                  aria-label="Send message"
+                  disabled={!text.trim() || isAgentRunning || isExhausted}
+                  onClick={submit}
+                  className={`absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-white disabled:opacity-50 ${
+                    isExhausted ? 'bg-neutral-400' : darkMode ? 'bg-[#0D9488]' : 'bg-brand'
+                  }`}
+                >
+                  <Send size={14} />
+                </button>
+              </Tooltip.Trigger>
+              {isExhausted ? (
+                <Tooltip.Portal>
+                  <Tooltip.Content
+                    className="z-[70] rounded bg-slate-900 px-2 py-1 text-[11px] text-slate-100 shadow"
+                    sideOffset={4}
+                  >
+                    Add credits to send messages
+                  </Tooltip.Content>
+                </Tooltip.Portal>
+              ) : null}
+            </Tooltip.Root>
+          </Tooltip.Provider>
+          {isExhausted ? (
+            <div className={`mt-2 flex items-center gap-2 text-xs ${darkMode ? 'text-slate-400' : 'text-muted'}`}>
+              <span>← Existing outputs above are still fully accessible</span>
+              <Link href="/settings/billing#topup" className="font-medium text-brand hover:underline">
+                Add credits from ₹199 →
+              </Link>
+            </div>
+          ) : text.length > 200 ? (
             <span className={`absolute right-12 top-1 text-[10px] ${darkMode ? 'text-slate-400' : 'text-muted'}`}>{text.length}</span>
           ) : null}
         </div>

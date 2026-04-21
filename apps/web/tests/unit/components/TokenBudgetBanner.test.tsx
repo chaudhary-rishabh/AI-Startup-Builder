@@ -1,8 +1,28 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TokenBudgetBanner } from '@/components/common/TokenBudgetBanner'
+import { CreditStateProvider } from '@/components/providers/CreditStateProvider'
 import { useUIStore } from '@/store/uiStore'
+import type { TokenBudget } from '@/types'
+
+vi.mock('@/store/authStore', () => ({
+  useAuthStore: (sel: (s: { isAuthenticated: boolean }) => unknown) =>
+    sel({ isAuthenticated: true }),
+}))
+
+function renderWithBudget(budget: TokenBudget): ReturnType<typeof render> {
+  const qc = new QueryClient()
+  qc.setQueryData(['token-budget'], budget)
+  return render(
+    <QueryClientProvider client={qc}>
+      <CreditStateProvider>
+        <TokenBudgetBanner />
+      </CreditStateProvider>
+    </QueryClientProvider>,
+  )
+}
 
 describe('TokenBudgetBanner', () => {
   beforeEach(() => {
@@ -54,5 +74,28 @@ describe('TokenBudgetBanner', () => {
     })
     render(<TokenBudgetBanner />)
     expect(screen.getByText(/12,000 tokens remaining/i)).toBeInTheDocument()
+  })
+
+  it('renders amber exhausted banner without dismiss', () => {
+    useUIStore.setState({ tokenWarning: null })
+    renderWithBudget({
+      tokensUsed: 50_000,
+      tokensLimit: 50_000,
+      tokensRemaining: 0,
+      bonusTokens: 0,
+      effectiveLimit: 50_000,
+      effectiveRemaining: 0,
+      percentUsed: 100,
+      planTier: 'free',
+      currentMonth: '2026-04',
+      resetAt: null,
+      isUnlimited: false,
+      warningThresholds: [],
+      creditState: 'exhausted',
+      isOneTimeCredits: true,
+    })
+    expect(screen.getByText(/50,000 free credits have been used/i)).toBeInTheDocument()
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /dismiss budget warning/i })).not.toBeInTheDocument()
   })
 })

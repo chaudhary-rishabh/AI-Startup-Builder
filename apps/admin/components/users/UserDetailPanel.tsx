@@ -7,6 +7,7 @@ import { motion } from 'framer-motion'
 import * as Tabs from '@radix-ui/react-tabs'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
+import { grantBonusCredits } from '@/lib/api/billing.api'
 import {
   changeUserPlan,
   getUserDetail,
@@ -36,6 +37,9 @@ export function UserDetailPanel({ userId, onClose }: UserDetailPanelProps) {
   const [notes, setNotes] = useState('')
   const [planOpen, setPlanOpen] = useState(false)
   const [suspendOpen, setSuspendOpen] = useState(false)
+  const [grantTokens, setGrantTokens] = useState('')
+  const [grantReason, setGrantReason] = useState('')
+  const [grantLoading, setGrantLoading] = useState(false)
 
   const detailQuery = useQuery({
     queryKey: ['admin', 'user', userId],
@@ -292,6 +296,67 @@ export function UserDetailPanel({ userId, onClose }: UserDetailPanelProps) {
                   Agent runs: {u.agentRunsTotal} total, {u.agentRunsThisMonth}{' '}
                   this month
                 </p>
+
+                <div className="mt-4 rounded-card border border-amber-200 bg-amber-50 p-4">
+                  <p className="font-medium text-heading">Grant bonus credits to this user</p>
+                  <p className="mt-1 text-xs text-muted">
+                    Credits are added immediately. Logged in audit trail.
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-end gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      placeholder="50000"
+                      value={grantTokens}
+                      onChange={(e) => setGrantTokens(e.target.value)}
+                      className="h-9 w-32 rounded-card border border-divider bg-white px-2 text-sm"
+                    />
+                    <button
+                      type="button"
+                      disabled={grantLoading}
+                      className="rounded-card border border-amber-700 bg-white px-3 py-2 text-xs font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+                      onClick={async () => {
+                        if (!userId || !u) return
+                        const n = Number(grantTokens)
+                        if (!Number.isFinite(n) || n < 1) {
+                          toast.error('Enter a valid token amount')
+                          return
+                        }
+                        if (grantReason.trim().length < 10) {
+                          toast.error('Reason must be at least 10 characters')
+                          return
+                        }
+                        setGrantLoading(true)
+                        try {
+                          await grantBonusCredits({
+                            userId,
+                            tokensToGrant: n,
+                            reason: grantReason.trim(),
+                          })
+                          toast.success(
+                            `${n.toLocaleString()} credits granted to ${u.name}`,
+                          )
+                          setGrantTokens('')
+                          setGrantReason('')
+                          void qc.invalidateQueries({ queryKey: ['admin', 'user', userId] })
+                        } catch (e) {
+                          toast.error(e instanceof Error ? e.message : 'Grant failed')
+                        } finally {
+                          setGrantLoading(false)
+                        }
+                      }}
+                    >
+                      Grant Credits
+                    </button>
+                  </div>
+                  <textarea
+                    value={grantReason}
+                    onChange={(e) => setGrantReason(e.target.value)}
+                    placeholder="Reason (required)"
+                    rows={2}
+                    className="mt-2 w-full rounded-card border border-divider bg-white px-3 py-2 text-sm"
+                  />
+                </div>
               </div>
             )}
           </Tabs.Content>

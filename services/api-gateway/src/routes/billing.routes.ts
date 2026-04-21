@@ -18,9 +18,11 @@ async function proxy(c: Parameters<typeof proxyRequest>[0]): Promise<Response> {
   return cb.fire(() => proxyRequest(c, upstream(c)))
 }
 
-// ── Stripe webhook — NO JWT, raw body passthrough ─────────────────────────────
+// ── Webhooks — NO JWT, raw body passthrough for signature verification ────────
 billing.post('/webhooks/stripe', async (c) => {
-  // Pass the raw body untouched so Stripe's signature verification succeeds
+  return cb.fire(() => proxyRequest(c, upstream(c), { skipBodyParsing: false }))
+})
+billing.post('/webhooks/razorpay', async (c) => {
   return cb.fire(() => proxyRequest(c, upstream(c), { skipBodyParsing: false }))
 })
 
@@ -38,6 +40,12 @@ billing.get('/invoices/:invoiceId/download', generalRateLimiter, async (c) => pr
 billing.post('/coupons/validate', generalRateLimiter, async (c) => proxy(c))
 billing.get('/usage', generalRateLimiter, async (c) => proxy(c))
 billing.get('/token-usage', generalRateLimiter, async (c) => proxy(c))
+billing.get('/token-budget', generalRateLimiter, async (c) => proxy(c))
+billing.post('/cancel', generalRateLimiter, async (c) => proxy(c))
+billing.post('/reactivate', generalRateLimiter, async (c) => proxy(c))
+billing.post('/topup/order', generalRateLimiter, async (c) => proxy(c))
+billing.post('/topup/verify', generalRateLimiter, async (c) => proxy(c))
+billing.post('/admin/grant-credits', adminRateLimiter, async (c) => proxy(c))
 billing.post('/admin/refund', adminRateLimiter, async (c) => proxy(c))
 
 export { billing as billingRoutes }

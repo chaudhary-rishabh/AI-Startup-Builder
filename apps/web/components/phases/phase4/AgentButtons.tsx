@@ -2,9 +2,11 @@
 
 import * as Tooltip from '@radix-ui/react-tooltip'
 import { CheckCircle2, Loader2 } from 'lucide-react'
+import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
+import { useCreditState } from '@/components/providers/CreditStateProvider'
 import { useAgentRun } from '@/hooks/useAgentRun'
 import type { BuildMode, SSEBatchCompleteEvent, SSEBatchStartEvent } from '@/types'
 
@@ -69,6 +71,7 @@ export function AgentButtons({
   autopilotStart,
   hasExistingFiles,
 }: AgentButtonsProps): JSX.Element {
+  const { isExhausted } = useCreditState()
   const [completed, setCompleted] = useState<Record<AgentKey, boolean>>({
     schema_gen: false,
     api_gen: false,
@@ -239,16 +242,16 @@ export function AgentButtons({
   )
 
   useEffect(() => {
-    if (!autopilotStart || hasExistingFiles) return
+    if (!autopilotStart || hasExistingFiles || isExhausted) return
     if (buildMode !== 'autopilot') return
     const t = setTimeout(() => {
       void trigger('schema_gen')
     }, 800)
     return () => clearTimeout(t)
-  }, [autopilotStart, buildMode, hasExistingFiles, trigger])
+  }, [autopilotStart, buildMode, hasExistingFiles, isExhausted, trigger])
 
   useEffect(() => {
-    if (buildMode !== 'autopilot') return
+    if (buildMode !== 'autopilot' || isExhausted) return
     for (let i = 0; i < ORDER.length - 1; i += 1) {
       const cur = ORDER[i]!
       const nxt = ORDER[i + 1]!
@@ -263,7 +266,17 @@ export function AgentButtons({
         break
       }
     }
-  }, [apiRun.status, backendRun.status, buildMode, errors, frontendRun.status, integrationRun.status, schemaRun.status, trigger])
+  }, [
+    apiRun.status,
+    backendRun.status,
+    buildMode,
+    errors,
+    frontendRun.status,
+    integrationRun.status,
+    isExhausted,
+    schemaRun.status,
+    trigger,
+  ])
 
   const runLookup: Record<AgentKey, ReturnType<typeof useAgentRun>> = {
     schema_gen: schemaRun,
@@ -278,6 +291,7 @@ export function AgentButtons({
     const run = runLookup[key]
     const allowed = canRunAgent(key, completed, buildMode)
     const disabledByPrereq = !allowed && run.status === 'idle'
+    const disabledByCredits = isExhausted && run.status === 'idle'
     const count = fileCounts[key] ?? 0
     const isError = errors[key]
 
@@ -285,7 +299,8 @@ export function AgentButtons({
       'relative flex min-h-10 w-full flex-col items-center justify-center rounded-md border-[1.5px] px-2 py-1 text-[13px] font-medium transition-colors'
 
     let stateClass = 'border-[#0D9488] text-[#0D9488] hover:bg-teal-500/10'
-    if (disabledByPrereq) stateClass = 'cursor-not-allowed border-[#0D9488]/40 text-[#0D9488]/40 opacity-40'
+    if (disabledByCredits) stateClass = 'cursor-not-allowed border-neutral-300 text-neutral-500 opacity-40'
+    if (disabledByPrereq && !disabledByCredits) stateClass = 'cursor-not-allowed border-[#0D9488]/40 text-[#0D9488]/40 opacity-40'
     if (run.status === 'starting') stateClass = 'cursor-not-allowed border-[#0D9488]/60 opacity-60'
     if (run.status === 'running') stateClass = 'cursor-not-allowed border-[#0D9488] opacity-90'
     if (run.status === 'complete' && !isError) stateClass = 'border-green-600 bg-teal-500/10 text-green-600'
@@ -294,10 +309,13 @@ export function AgentButtons({
     const inner = (
       <button
         type="button"
-        disabled={(run.status === 'running' || run.status === 'starting') && !isError}
+        disabled={
+          disabledByCredits || ((run.status === 'running' || run.status === 'starting') && !isError)
+        }
         className={`${baseClass} ${stateClass}`}
         data-testid={`agent-btn-${key}`}
         onClick={() => {
+          if (disabledByCredits) return
           if (isError) {
             setErrors((p) => ({ ...p, [key]: false }))
             run.reset()
@@ -332,6 +350,25 @@ export function AgentButtons({
       </button>
     )
 
+    if (disabledByCredits) {
+      return (
+        <Tooltip.Provider key={key} delayDuration={200}>
+          <Tooltip.Root>
+            <Tooltip.Trigger asChild>{inner}</Tooltip.Trigger>
+            <Tooltip.Portal>
+              <Tooltip.Content
+                className="z-50 rounded bg-slate-900 px-2 py-1 text-[11px] text-slate-200 shadow"
+                sideOffset={4}
+                data-testid={`tooltip-${key}`}
+              >
+                Add credits to generate code
+              </Tooltip.Content>
+            </Tooltip.Portal>
+          </Tooltip.Root>
+        </Tooltip.Provider>
+      )
+    }
+
     if (!disabledByPrereq || run.status !== 'idle') return <div key={key}>{inner}</div>
 
     return (
@@ -348,5 +385,17 @@ export function AgentButtons({
     )
   }
 
-  return <div className="flex flex-col gap-2 border-t border-slate-700 p-3">{DEFS.map(renderButton)}</div>
+  return (
+    <div className="flex flex-col gap-2 border-t border-slate-700 p-3">
+      {DEFS.map(renderButton)}
+      {isExhausted ? (
+        <div className="rounded-card border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+          <p>Your free credits have been used.</p>
+          <Link href="/settings/billing#topup" className="mt-1 inline-block font-medium text-brand hover:underline">
+            Add credits →
+          </Link>
+        </div>
+      ) : null}
+    </div>
+  )
 }

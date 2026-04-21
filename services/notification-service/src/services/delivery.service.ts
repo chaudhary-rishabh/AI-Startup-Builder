@@ -47,6 +47,9 @@ function shouldSendEmail(
       return prefs.phaseComplete
     case 'billing_receipt':
     case 'subscription_cancelled':
+    case 'topup_receipt':
+    case 'credits_exhausted':
+    case 'credits_welcome':
       return prefs.billingEvents
     case 'token_warning_80':
     case 'token_warning_95':

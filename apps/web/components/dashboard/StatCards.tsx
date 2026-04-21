@@ -20,7 +20,7 @@ function formatCompact(value: number): string {
 export function StatCards(): JSX.Element {
   const { data, isLoading } = useProjects({ status: 'active' })
   const tokenUsageQuery = useQuery({
-    queryKey: ['token-budget-card'],
+    queryKey: ['token-budget'],
     queryFn: getTokenBudget,
     staleTime: 30_000,
   })

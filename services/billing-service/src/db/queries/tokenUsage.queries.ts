@@ -31,6 +31,7 @@ export async function getOrCreateMonthlyUsage(userId: string, month: string): Pr
       month,
       tokensLimit: limit,
       tokensUsed: BigInt(0),
+      bonusTokens: BigInt(0),
       costUsd: '0.0000',
     })
     .onConflictDoNothing({ target: [tokenUsage.userId, tokenUsage.month] })
@@ -81,4 +82,18 @@ export async function updateTokenLimit(userId: string, newLimit: bigint): Promis
     .update(tokenUsage)
     .set({ tokensLimit: newLimit, updatedAt: new Date() })
     .where(and(eq(tokenUsage.userId, userId), eq(tokenUsage.month, m)))
+}
+
+export async function addBonusTokens(userId: string, month: string, delta: bigint): Promise<TokenUsage> {
+  const db = getDb()
+  const [row] = await db
+    .update(tokenUsage)
+    .set({
+      bonusTokens: sql`${tokenUsage.bonusTokens} + ${delta}`,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(tokenUsage.userId, userId), eq(tokenUsage.month, month)))
+    .returning()
+  if (!row) throw new Error('addBonusTokens: row not found')
+  return row
 }

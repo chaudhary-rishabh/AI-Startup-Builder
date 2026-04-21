@@ -7,13 +7,18 @@ const EnvSchema = z.object({
   REDIS_URL: z.string().url(),
   JWT_PUBLIC_KEY_BASE64: z.string().min(1),
 
-  STRIPE_SECRET_KEY: z.string().startsWith('sk_'),
-  STRIPE_WEBHOOK_SECRET: z.string().startsWith('whsec_'),
-  STRIPE_FREE_PRICE_ID: z.string().optional(),
-  STRIPE_PRO_MONTHLY_PRICE_ID: z.string().min(1),
-  STRIPE_PRO_YEARLY_PRICE_ID: z.string().min(1),
-  STRIPE_TEAM_MONTHLY_PRICE_ID: z.string().min(1),
-  STRIPE_TEAM_YEARLY_PRICE_ID: z.string().min(1),
+  RAZORPAY_KEY_ID: z.string().min(1),
+  RAZORPAY_KEY_SECRET: z.string().min(1),
+  RAZORPAY_WEBHOOK_SECRET: z.string().min(1),
+
+  RAZORPAY_STARTER_MONTHLY_PLAN_ID: z.string().min(1),
+  RAZORPAY_STARTER_YEARLY_PLAN_ID: z.string().min(1),
+  RAZORPAY_PRO_MONTHLY_PLAN_ID: z.string().min(1),
+  RAZORPAY_PRO_YEARLY_PLAN_ID: z.string().min(1),
+  RAZORPAY_TEAM_MONTHLY_PLAN_ID: z.string().min(1),
+  RAZORPAY_TEAM_YEARLY_PLAN_ID: z.string().min(1),
+
+  FREE_PLAN_SIGNUP_TOKENS: z.coerce.number().default(50_000),
 
   APP_URL: z.string().url().default('http://localhost:3000'),
 

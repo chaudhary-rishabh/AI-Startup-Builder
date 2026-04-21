@@ -7,22 +7,23 @@ import { z } from 'zod'
 import { createCoupon, findCouponByCode, listCoupons } from '../db/queries/coupons.queries.js'
 import { findTransactionById, updateTransactionRefund } from '../db/queries/transactions.queries.js'
 import { getDb } from '../lib/db.js'
-import { err } from '../lib/response.js'
+import { err, ok } from '../lib/response.js'
 import { getRedis } from '../lib/redis.js'
-import { stripe } from '../lib/stripe.js'
 import { requireAdmin } from '../middleware/requireAdmin.js'
 import { requireAuth } from '../middleware/requireAuth.js'
-import { createRefund } from '../services/stripe.service.js'
+import { createRefund } from '../services/razorpay.service.js'
+import { grantBonusCredits } from '../services/creditGrant.service.js'
+import { AdminGrantCreditsSchema } from '../validators/billing.validators.js'
 
 const routes = new Hono()
 routes.use('*', requireAuth)
 routes.use('*', requireAdmin)
 
-function formatCents(cents: number): string {
-  return new Intl.NumberFormat('en-US', {
+function formatPaise(paise: number): string {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD',
-  }).format(cents / 100)
+    currency: 'INR',
+  }).format(paise / 100)
 }
 
 function getPeriodStart(period: 'month' | 'quarter' | 'year'): Date {
@@ -70,7 +71,7 @@ routes.post('/admin/refund', zValidator('json', refundSchema), async (c) => {
   const tx = await findTransactionById(body.transactionId)
   if (!tx) return err(c, 404, 'TRANSACTION_NOT_FOUND', 'Transaction not found')
   if (tx.status === 'refunded') return err(c, 422, 'ALREADY_REFUNDED', 'Transaction already refunded')
-  if (!tx.stripeChargeId) return err(c, 422, 'NO_CHARGE_ID', 'Transaction has no Stripe charge id')
+  if (!tx.razorpayPaymentId) return err(c, 422, 'NO_PAYMENT_ID', 'Transaction has no Razorpay payment id')
 
   const remaining = tx.amountCents - tx.refundedAmountCents
   if (body.amountCents !== undefined && body.amountCents > remaining) {
@@ -82,11 +83,11 @@ routes.post('/admin/refund', zValidator('json', refundSchema), async (c) => {
     )
   }
 
-  const refund = await createRefund({
-    stripeChargeId: tx.stripeChargeId,
-    ...(body.amountCents !== undefined ? { amountCents: body.amountCents } : {}),
-    reason: body.reason,
-  })
+  const refund = await createRefund(
+    tx.razorpayPaymentId,
+    body.amountCents ?? remaining,
+    { reason: body.reason, note: body.note ?? '' },
+  )
 
   const amountRefunded = body.amountCents ?? remaining
   const newRefundedAmount = tx.refundedAmountCents + amountRefunded
@@ -101,9 +102,9 @@ routes.post('/admin/refund', zValidator('json', refundSchema), async (c) => {
     {
       success: true,
       data: {
-        refundId: refund.id,
-        amountRefunded: refund.amount,
-        status: refund.status,
+        refundId: refund.refundId,
+        amountRefunded: amountRefunded,
+        status: 'processed',
         transactionStatus: newStatus,
       },
     },
@@ -133,18 +134,18 @@ routes.get('/admin/revenue', zValidator('query', revenueQuerySchema), async (c) 
   const now = new Date()
   const db = getDb()
 
-  const mrrRes = (await db.execute(sql`
+    const mrrRes = (await db.execute(sql`
     SELECT COALESCE(SUM(
       CASE
-        WHEN sub.billing_cycle = 'monthly' THEN p.price_monthly_cents
-        WHEN sub.billing_cycle = 'yearly' THEN p.price_yearly_cents / 12
+        WHEN sub.billing_cycle = 'monthly' THEN p.price_monthly_paise
+        WHEN sub.billing_cycle = 'yearly' THEN p.price_yearly_paise / 12
         ELSE 0
       END
     ), 0)::int AS mrr_cents
     FROM billing.subscriptions sub
     JOIN billing.plans p ON sub.plan_id = p.id
     WHERE sub.status = 'active'
-      AND sub.stripe_subscription_id IS NOT NULL
+      AND sub.razorpay_subscription_id IS NOT NULL
   `)) as unknown as { rows?: Array<{ mrr_cents: number }> }
 
   const revenueRes = (await db.execute(sql`
@@ -174,7 +175,7 @@ routes.get('/admin/revenue', zValidator('query', revenueQuerySchema), async (c) 
   const newSubsRes = (await db.execute(sql`
     SELECT COUNT(*)::int AS count
     FROM billing.subscriptions
-    WHERE stripe_subscription_id IS NOT NULL
+    WHERE razorpay_subscription_id IS NOT NULL
       AND created_at >= ${periodStart.toISOString()}
   `)) as unknown as { rows?: Array<{ count: number }> }
 
@@ -195,9 +196,9 @@ routes.get('/admin/revenue', zValidator('query', revenueQuerySchema), async (c) 
     periodStart: periodStart.toISOString(),
     periodEnd: now.toISOString(),
     mrrCents,
-    mrrFormatted: formatCents(mrrCents),
+    mrrFormatted: formatPaise(mrrCents),
     revenueInPeriodCents,
-    revenueInPeriodFormatted: formatCents(revenueInPeriodCents),
+    revenueInPeriodFormatted: formatPaise(revenueInPeriodCents),
     transactionCount,
     subscribersByPlan,
     newSubscribers,
@@ -217,7 +218,7 @@ const createCouponSchema = z.object({
   maxUses: z.number().int().positive().optional(),
   validForPlans: z.array(z.enum(['pro', 'team'])).default([]),
   expiresAt: z.string().datetime().optional(),
-  createInStripe: z.boolean().default(true),
+  createInStripe: z.boolean().default(false),
 })
 
 routes.post('/admin/coupons', zValidator('json', createCouponSchema), async (c) => {
@@ -232,21 +233,7 @@ routes.post('/admin/coupons', zValidator('json', createCouponSchema), async (c) 
   const existing = await findCouponByCode(body.code)
   if (existing) return err(c, 409, 'COUPON_CODE_EXISTS', 'Coupon code already exists')
 
-  let stripeCouponId: string | null = null
-  if (body.createInStripe) {
-    const stripeCoupon = await stripe.coupons.create({
-      ...(body.discountType === 'percent'
-        ? { percent_off: body.discountValue }
-        : { amount_off: Math.round(body.discountValue * 100), currency: 'usd' }),
-      duration: 'once',
-      name: body.code,
-      ...(body.maxUses !== undefined ? { max_redemptions: body.maxUses } : {}),
-      ...(body.expiresAt !== undefined
-        ? { redeem_by: Math.floor(new Date(body.expiresAt).getTime() / 1000) }
-        : {}),
-    })
-    stripeCouponId = stripeCoupon.id
-  }
+  const stripeCouponId: string | null = null
 
   const coupon = await createCoupon({
     code: body.code,
@@ -264,6 +251,19 @@ routes.post('/admin/coupons', zValidator('json', createCouponSchema), async (c) 
 routes.get('/admin/coupons', async (c) => {
   const coupons = await listCoupons()
   return c.json({ success: true, data: { coupons } }, 200)
+})
+
+routes.post('/admin/grant-credits', zValidator('json', AdminGrantCreditsSchema), async (c) => {
+  const userId = c.get('userId' as never) as string
+  if (!(await rateLimitOk(userId, 'grant-credits', 20, 60))) {
+    return err(c, 429, 'RATE_LIMIT', 'Too many requests')
+  }
+  const forbidden = requireSuperAdmin(c)
+  if (forbidden) return forbidden
+  const body = c.req.valid('json')
+  const adminId = c.get('userId' as never) as string
+  const result = await grantBonusCredits(body.userId, body.tokensToGrant, adminId, body.reason)
+  return ok(c, { newBonusTotal: result.newBonusTotal })
 })
 
 export default routes

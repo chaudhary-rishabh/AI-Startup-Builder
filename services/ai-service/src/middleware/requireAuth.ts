@@ -31,6 +31,8 @@ export const requireAuth: MiddlewareHandler = async (c, next) => {
     c.set('userId' as never, sub)
     c.set('userRole' as never, role)
     c.set('userPlan' as never, plan)
+    c.set('userEmail' as never, typeof payload['email'] === 'string' ? payload['email'] : '')
+    c.set('userName' as never, typeof payload['name'] === 'string' ? payload['name'] : '')
     await next()
   } catch {
     return err(c, 401, 'UNAUTHORIZED', 'Invalid or expired token')

@@ -36,29 +36,35 @@ export async function findSubscriptionByUserId(
   return { ...row.sub, plan: row.plan }
 }
 
-export async function findSubscriptionByStripeCustomerId(
+export async function findSubscriptionByRazorpayCustomerId(
   customerId: string,
 ): Promise<Subscription | undefined> {
   const db = getDb()
   const [row] = await db
     .select()
     .from(subscriptions)
-    .where(eq(subscriptions.stripeCustomerId, customerId))
+    .where(eq(subscriptions.razorpayCustomerId, customerId))
     .limit(1)
   return row
 }
 
-export async function findSubscriptionByStripeSubscriptionId(
+export async function findSubscriptionByRazorpaySubscriptionId(
   subId: string,
 ): Promise<Subscription | undefined> {
   const db = getDb()
   const [row] = await db
     .select()
     .from(subscriptions)
-    .where(eq(subscriptions.stripeSubscriptionId, subId))
+    .where(eq(subscriptions.razorpaySubscriptionId, subId))
     .limit(1)
   return row
 }
+
+/** @deprecated legacy name — use findSubscriptionByRazorpayCustomerId */
+export const findSubscriptionByStripeCustomerId = findSubscriptionByRazorpayCustomerId
+
+/** @deprecated legacy name */
+export const findSubscriptionByStripeSubscriptionId = findSubscriptionByRazorpaySubscriptionId
 
 export async function upsertSubscription(data: UpsertSubscription): Promise<Subscription> {
   const db = getDb()
@@ -67,8 +73,8 @@ export async function upsertSubscription(data: UpsertSubscription): Promise<Subs
     .values({
       userId: data.userId,
       planId: data.planId,
-      stripeCustomerId: data.stripeCustomerId,
-      stripeSubscriptionId: data.stripeSubscriptionId ?? null,
+      razorpayCustomerId: data.razorpayCustomerId,
+      razorpaySubscriptionId: data.razorpaySubscriptionId ?? null,
       status: data.status,
       billingCycle: data.billingCycle ?? null,
       currentPeriodStart: data.currentPeriodStart ?? null,
@@ -76,13 +82,15 @@ export async function upsertSubscription(data: UpsertSubscription): Promise<Subs
       cancelAtPeriodEnd: data.cancelAtPeriodEnd ?? false,
       cancelledAt: data.cancelledAt ?? null,
       trialEnd: data.trialEnd ?? null,
+      signupCreditsGranted: data.signupCreditsGranted ?? false,
+      isOneTimeCredits: data.isOneTimeCredits ?? false,
     })
     .onConflictDoUpdate({
       target: subscriptions.userId,
       set: {
         planId: data.planId,
-        stripeCustomerId: data.stripeCustomerId,
-        stripeSubscriptionId: data.stripeSubscriptionId ?? null,
+        razorpayCustomerId: data.razorpayCustomerId,
+        razorpaySubscriptionId: data.razorpaySubscriptionId ?? null,
         status: data.status,
         billingCycle: data.billingCycle ?? null,
         currentPeriodStart: data.currentPeriodStart ?? null,
@@ -90,6 +98,8 @@ export async function upsertSubscription(data: UpsertSubscription): Promise<Subs
         cancelAtPeriodEnd: data.cancelAtPeriodEnd ?? false,
         cancelledAt: data.cancelledAt ?? null,
         trialEnd: data.trialEnd ?? null,
+        signupCreditsGranted: data.signupCreditsGranted ?? false,
+        isOneTimeCredits: data.isOneTimeCredits ?? false,
         updatedAt: new Date(),
       },
     })
@@ -102,7 +112,7 @@ export async function updateSubscriptionStatus(
   userId: string,
   data: {
     status?: string
-    stripeSubscriptionId?: string | null
+    razorpaySubscriptionId?: string | null
     currentPeriodStart?: Date | null
     currentPeriodEnd?: Date | null
     cancelAtPeriodEnd?: boolean
@@ -110,6 +120,8 @@ export async function updateSubscriptionStatus(
     trialEnd?: Date | null
     planId?: string
     billingCycle?: string | null
+    signupCreditsGranted?: boolean
+    isOneTimeCredits?: boolean
   },
 ): Promise<Subscription> {
   const db = getDb()
@@ -117,8 +129,8 @@ export async function updateSubscriptionStatus(
     .update(subscriptions)
     .set({
       ...(data.status !== undefined ? { status: data.status as Subscription['status'] } : {}),
-      ...(data.stripeSubscriptionId !== undefined
-        ? { stripeSubscriptionId: data.stripeSubscriptionId }
+      ...(data.razorpaySubscriptionId !== undefined
+        ? { razorpaySubscriptionId: data.razorpaySubscriptionId }
         : {}),
       ...(data.currentPeriodStart !== undefined ? { currentPeriodStart: data.currentPeriodStart } : {}),
       ...(data.currentPeriodEnd !== undefined ? { currentPeriodEnd: data.currentPeriodEnd } : {}),
@@ -127,6 +139,8 @@ export async function updateSubscriptionStatus(
       ...(data.trialEnd !== undefined ? { trialEnd: data.trialEnd } : {}),
       ...(data.planId !== undefined ? { planId: data.planId } : {}),
       ...(data.billingCycle !== undefined ? { billingCycle: data.billingCycle } : {}),
+      ...(data.signupCreditsGranted !== undefined ? { signupCreditsGranted: data.signupCreditsGranted } : {}),
+      ...(data.isOneTimeCredits !== undefined ? { isOneTimeCredits: data.isOneTimeCredits } : {}),
       updatedAt: new Date(),
     })
     .where(eq(subscriptions.userId, userId))

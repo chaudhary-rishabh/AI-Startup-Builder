@@ -247,6 +247,7 @@ export interface AIUsageOverview {
   tokensThisMonth: number
   projectedCostUsd: number
   costThisMonthUsd: number
+  exhaustedUsersCount: number
 }
 
 export interface AITokenDataPoint {

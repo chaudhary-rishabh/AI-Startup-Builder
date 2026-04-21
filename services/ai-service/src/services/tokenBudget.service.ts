@@ -1,12 +1,25 @@
 import { env } from '../config/env.js'
-import { publishTokenBudgetWarning } from '../events/publisher.js'
+import { publishEvent, publishTokenBudgetWarning } from '../events/publisher.js'
+import { getRedis } from '../lib/redis.js'
+
+export interface BudgetCheckResult {
+  allowed: boolean
+  remaining: number
+  limit: number
+  creditState?: string
+  effectiveRemaining?: number
+  effectiveLimit?: number
+  planTier?: string
+  isOneTimeCredits?: boolean
+}
 
 export async function checkTokenBudget(
   userId: string,
   estimatedTokens: number,
-): Promise<{ allowed: boolean; remaining: number; limit: number }> {
+  opts?: { userEmail?: string; userName?: string },
+): Promise<BudgetCheckResult> {
   try {
-    const url = `${env.BILLING_SERVICE_URL.replace(/\/$/, '')}/internal/token-budget?userId=${encodeURIComponent(userId)}`
+    const url = `${env.BILLING_SERVICE_URL.replace(/\/$/, '')}/internal/token-budget?userId=${encodeURIComponent(userId)}&estimatedTokens=${encodeURIComponent(String(estimatedTokens))}`
     const res = await fetch(url, {
       headers: {
         'X-User-ID': userId,
@@ -17,17 +30,56 @@ export async function checkTokenBudget(
     if (!res.ok) throw new Error(`billing ${res.status}`)
     const json = (await res.json()) as {
       success?: boolean
-      data?: { tokensUsed?: number; tokensLimit?: number }
-      tokensUsed?: number
-      tokensLimit?: number
+      data?: {
+        allowed?: boolean
+        remaining?: number
+        limit?: number
+        creditState?: string
+        effectiveRemaining?: number
+        effectiveLimit?: number
+        isOneTimeCredits?: boolean
+        planTier?: string
+      }
     }
-    const used = json.data?.tokensUsed ?? json.tokensUsed ?? 0
-    const limit = json.data?.tokensLimit ?? json.tokensLimit ?? 50_000
-    const remaining = Math.max(0, limit - used)
-    return { allowed: remaining >= estimatedTokens, remaining, limit }
+    const d = json.data
+    if (!d) throw new Error('missing data')
+    const allowed = Boolean(d.allowed)
+    const creditState = d.creditState ?? 'active'
+
+    if (creditState === 'exhausted' && allowed === false) {
+      const redis = getRedis()
+      const key = `credits_exhausted_notified:${userId}`
+      const notified = await redis.exists(key)
+      if (!notified) {
+        await redis.setex(key, 30 * 24 * 60 * 60, '1')
+        await publishEvent('credits.exhausted', {
+          userId,
+          planTier: d.planTier ?? 'free',
+          ...(opts?.userEmail
+            ? { userEmail: opts.userEmail, userName: opts.userName ?? 'Founder' }
+            : {}),
+        })
+      }
+    }
+
+    return {
+      allowed,
+      remaining: d.remaining ?? 0,
+      limit: d.limit ?? 50_000,
+      creditState,
+      effectiveRemaining: d.effectiveRemaining,
+      effectiveLimit: d.effectiveLimit,
+      planTier: d.planTier,
+      isOneTimeCredits: d.isOneTimeCredits,
+    }
   } catch (e) {
     console.warn('[ai-service] checkTokenBudget: billing-service unavailable, fail-open', e)
-    return { allowed: true, remaining: 999_999, limit: 999_999 }
+    return {
+      allowed: true,
+      remaining: 999_999,
+      limit: 999_999,
+      creditState: 'active',
+    }
   }
 }
 
@@ -48,8 +100,10 @@ export async function recordTokenUsage(
 }
 
 export async function checkAndEmitBudgetWarnings(userId: string): Promise<void> {
-  const { remaining, limit } = await checkTokenBudget(userId, 0)
+  const b = await checkTokenBudget(userId, 0)
+  const limit = b.effectiveLimit ?? b.limit
   if (limit <= 0 || limit > 900_000) return
+  const remaining = b.effectiveRemaining ?? b.remaining
   const used = limit - remaining
   const pct = (used / limit) * 100
   if (pct >= env.TOKEN_WARNING_THRESHOLD_2) {

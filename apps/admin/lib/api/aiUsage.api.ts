@@ -13,7 +13,7 @@ export async function getAIUsageOverview(
   from: string,
   to: string,
 ): Promise<AIUsageOverview> {
-  const body: unknown = await api.get('/admin/ai-usage/overview', {
+  const body: unknown = await api.get('/analytics/admin/ai-usage/overview', {
     params: { from, to },
   })
   return unwrap<AIUsageOverview>(body)

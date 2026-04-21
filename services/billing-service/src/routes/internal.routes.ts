@@ -9,7 +9,10 @@ import { incrementUsage } from '../services/tokenUsage.service.js'
 
 const BudgetQuerySchema = z.object({
   userId: z.string().uuid(),
-  estimatedTokens: z.coerce.number().int().positive(),
+  estimatedTokens: z.preprocess(
+    (v) => (v === undefined || v === '' ? 1 : v),
+    z.coerce.number().int().min(0).max(10_000_000),
+  ),
 })
 
 const IncrementSchema = z.object({

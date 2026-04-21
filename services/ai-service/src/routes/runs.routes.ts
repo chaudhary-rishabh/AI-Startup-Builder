@@ -60,8 +60,35 @@ routes.post('/runs', zValidator('json', StartAgentRunSchema), async (c) => {
       ? ctx.estimatedTokens
       : DEFAULT_ESTIMATED_TOKENS
 
-  const budget = await checkTokenBudget(userId, estimatedTokens)
+  const userEmail = (c.get('userEmail' as never) as string | undefined) ?? ''
+  const userName = (c.get('userName' as never) as string | undefined) ?? ''
+  const budget = await checkTokenBudget(userId, estimatedTokens, {
+    ...(userEmail !== '' ? { userEmail, userName } : {}),
+  })
   if (!budget.allowed) {
+    if (budget.creditState === 'exhausted') {
+      const traceId = (c.get('requestId' as never) as string | undefined) ?? randomUUID()
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'CREDITS_EXHAUSTED',
+            message: 'Your free credits have been used. Upgrade to continue building.',
+            details: {
+              tokensUsed: (budget.effectiveLimit ?? budget.limit) - (budget.effectiveRemaining ?? 0),
+              effectiveLimit: budget.effectiveLimit ?? budget.limit,
+              planTier: budget.planTier ?? 'free',
+              isOneTimeCredits: budget.isOneTimeCredits ?? true,
+              upgradeUrl: '/settings/billing',
+              topUpUrl: '/settings/billing#topup',
+            },
+            traceId,
+            service: 'ai-service',
+          },
+        },
+        422,
+      )
+    }
     return err(c, 422, 'TOKEN_BUDGET_EXCEEDED', 'Token budget exceeded for this billing period')
   }
 

@@ -2,11 +2,10 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 
 import { env } from '../config/env.js'
-import { findSubscriptionByUserId } from '../db/queries/subscriptions.queries.js'
+import { findTransactionsByUserId } from '../db/queries/transactions.queries.js'
 import { err, ok } from '../lib/response.js'
 import { getRedis } from '../lib/redis.js'
 import { requireAuth } from '../middleware/requireAuth.js'
-import { listInvoices } from '../services/stripe.service.js'
 
 const routes = new Hono()
 routes.use('*', requireAuth)
@@ -38,31 +37,21 @@ routes.get('/invoices', async (c) => {
     }
   }
 
-  const sub = await findSubscriptionByUserId(userId)
-  if (!sub?.stripeCustomerId) {
-    return ok(c, { invoices: [] as unknown[] })
-  }
-
   const parsedLimit = limitSchema.safeParse(c.req.query('limit') ?? '10')
   const limit = parsedLimit.success ? parsedLimit.data : 10
-  const stripeInvoices = await listInvoices(sub.stripeCustomerId, limit)
-  const invoices = stripeInvoices.map((inv) => ({
-    id: inv.id,
-    number: inv.number,
-    amountPaid: inv.amount_paid,
-    currency: inv.currency,
-    status: inv.status,
-    periodStart:
-      inv.period_start !== null && inv.period_start !== undefined
-        ? new Date(inv.period_start * 1000).toISOString()
-        : null,
-    periodEnd:
-      inv.period_end !== null && inv.period_end !== undefined
-        ? new Date(inv.period_end * 1000).toISOString()
-        : null,
-    pdfUrl: inv.invoice_pdf,
-    hostedInvoiceUrl: inv.hosted_invoice_url,
-    createdAt: new Date(inv.created * 1000).toISOString(),
+  const { data: rows } = await findTransactionsByUserId(userId, { limit, page: 1 })
+  const invoices = rows.map((tx) => ({
+    id: tx.id,
+    number: tx.stripeInvoiceId ?? tx.razorpayPaymentId ?? tx.id,
+    amountPaid: tx.amountCents,
+    currency: tx.currency,
+    status: tx.status,
+    periodStart: null as string | null,
+    periodEnd: null as string | null,
+    pdfUrl: tx.invoicePdfUrl,
+    hostedInvoiceUrl: tx.invoicePdfUrl,
+    createdAt: tx.createdAt.toISOString(),
+    razorpayPaymentId: tx.razorpayPaymentId,
   }))
   const payload = { invoices }
   await redis.setex(cacheKey, Math.max(120, env.SUBSCRIPTION_CACHE_TTL), JSON.stringify(payload))

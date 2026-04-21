@@ -24,6 +24,18 @@ export async function findTransactionByStripeInvoiceId(
   return row
 }
 
+export async function findTransactionByRazorpayPaymentId(
+  paymentId: string,
+): Promise<Transaction | undefined> {
+  const db = getDb()
+  const [row] = await db
+    .select()
+    .from(transactions)
+    .where(eq(transactions.razorpayPaymentId, paymentId))
+    .limit(1)
+  return row
+}
+
 export async function findTransactionByStripeEventId(
   eventId: string,
 ): Promise<Transaction | undefined> {

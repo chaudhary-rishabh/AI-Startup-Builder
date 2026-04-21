@@ -22,8 +22,15 @@ routes.post('/chat', zValidator('json', ChatBodySchema), async (c) => {
   const body = c.req.valid('json')
   const model = body.model ?? 'claude-sonnet-4-5'
   const estimated = Math.ceil(body.content.length / 4) + 4096
-  const budget = await checkTokenBudget(userId, estimated)
+  const userEmail = (c.get('userEmail' as never) as string | undefined) ?? ''
+  const userName = (c.get('userName' as never) as string | undefined) ?? ''
+  const budget = await checkTokenBudget(userId, estimated, {
+    ...(userEmail !== '' ? { userEmail, userName } : {}),
+  })
   if (!budget.allowed) {
+    if (budget.creditState === 'exhausted') {
+      return err(c, 422, 'CREDITS_EXHAUSTED', 'Your free credits have been used. Upgrade to continue building.')
+    }
     return err(c, 422, 'TOKEN_BUDGET_EXCEEDED', 'Token budget exceeded for this billing period')
   }
 

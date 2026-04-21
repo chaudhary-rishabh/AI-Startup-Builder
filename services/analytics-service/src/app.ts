@@ -6,6 +6,7 @@ import { secureHeaders } from 'hono/secure-headers'
 import { errorHandler } from './middleware/errorHandler.js'
 import { requestIdMiddleware } from './middleware/requestId.js'
 import agentPerformanceRoutes from './routes/agentPerformance.routes.js'
+import aiUsageAdminRoutes from './routes/aiUsageAdmin.routes.js'
 import auditRoutes from './routes/audit.routes.js'
 import eventsRoutes from './routes/events.routes.js'
 import funnelRoutes from './routes/funnel.routes.js'
@@ -37,6 +38,7 @@ export function createApp(): Hono {
   app.route('/analytics/admin', revenueRoutes)
   app.route('/analytics/admin', userActivityRoutes)
   app.route('/analytics/admin', auditRoutes)
+  app.route('/analytics/admin/ai-usage', aiUsageAdminRoutes)
 
   app.get('/health', (c) =>
     c.json({

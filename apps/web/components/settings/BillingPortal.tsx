@@ -3,26 +3,55 @@
 import * as AlertDialog from '@radix-ui/react-alert-dialog'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PlanBadge, TokenUsageBar } from '@repo/ui'
-import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import {
   cancelSubscription,
   createCheckoutSession,
-  createPortalSession,
+  createTopUpOrder,
   getInvoices,
   getPlans,
   getSubscription,
   getTokenBudget,
+  verifyTopUp,
 } from '@/api/billing.api'
+import { useAuthStore } from '@/store/authStore'
 
-function formatMoney(cents: number, currency: string): string {
-  return new Intl.NumberFormat(undefined, { style: 'currency', currency: currency.toUpperCase() }).format(cents / 100)
+function formatInrPaise(paise: number): string {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(paise / 100)
+}
+
+function loadRazorpayScript(): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve()
+  if ((window as unknown as { Razorpay?: unknown }).Razorpay) return Promise.resolve()
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.async = true
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error('Failed to load Razorpay'))
+    document.body.appendChild(script)
+  })
+}
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: Record<string, unknown>) => { open: () => void }
+  }
 }
 
 export function BillingPortal(): JSX.Element {
+  const router = useRouter()
   const queryClient = useQueryClient()
+  const user = useAuthStore((s) => s.user)
   const [cancelOpen, setCancelOpen] = useState(false)
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
 
   const budgetQuery = useQuery({ queryKey: ['token-budget'], queryFn: getTokenBudget })
   const subQuery = useQuery({ queryKey: ['billing-subscription'], queryFn: getSubscription })
@@ -38,6 +67,96 @@ export function BillingPortal(): JSX.Element {
     },
   })
 
+  const openSubscriptionCheckout = useCallback(
+    async (plan: 'starter' | 'pro' | 'team', billingCycle: 'monthly' | 'yearly') => {
+      setCheckoutLoading(true)
+      try {
+        await loadRazorpayScript()
+        const { checkoutData } = await createCheckoutSession({ plan, billingCycle })
+        const Razorpay = window.Razorpay
+        if (!Razorpay) {
+          toast.error('Razorpay failed to load')
+          return
+        }
+        const rzp = new Razorpay({
+          key: checkoutData.razorpayKeyId,
+          subscription_id: checkoutData.subscriptionId,
+          name: checkoutData.name,
+          description: checkoutData.description,
+          prefill: checkoutData.prefill,
+          handler: () => {
+            router.push('/settings/billing?success=1')
+          },
+          modal: {
+            ondismiss: () => setCheckoutLoading(false),
+          },
+        })
+        rzp.open()
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Checkout failed')
+      } finally {
+        setCheckoutLoading(false)
+      }
+    },
+    [router],
+  )
+
+  const openTopUp = useCallback(
+    async (packName: 'starter_pack' | 'builder_pack' | 'studio_pack') => {
+      setCheckoutLoading(true)
+      try {
+        await loadRazorpayScript()
+        const order = await createTopUpOrder(packName)
+        const Razorpay = window.Razorpay
+        if (!Razorpay) {
+          toast.error('Razorpay failed to load')
+          return
+        }
+        const rzp = new Razorpay({
+          key: order.razorpayKeyId,
+          amount: order.amountPaise,
+          currency: 'INR',
+          order_id: order.orderId,
+          name: 'AI Startup Builder',
+          description: `Top-up — ${order.tokenGrant.toLocaleString()} tokens`,
+          prefill: user
+            ? { email: user.email, name: user.name }
+            : { email: '', name: '' },
+          handler: async (response: {
+            razorpay_order_id: string
+            razorpay_payment_id: string
+            razorpay_signature: string
+          }) => {
+            try {
+              await verifyTopUp({
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+              })
+              toast.success('✓ Credits added successfully!')
+              await queryClient.invalidateQueries({ queryKey: ['token-budget'] })
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : 'Verification failed')
+            }
+          },
+          modal: {
+            ondismiss: () => setCheckoutLoading(false),
+          },
+        })
+        rzp.open()
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Top-up failed')
+      } finally {
+        setCheckoutLoading(false)
+      }
+    },
+    [queryClient, user],
+  )
+
+  useEffect(() => {
+    void loadRazorpayScript().catch(() => {})
+  }, [])
+
   const budget = budgetQuery.data
   const sub = subQuery.data
   const invoices = invoicesQuery.data ?? []
@@ -45,6 +164,9 @@ export function BillingPortal(): JSX.Element {
 
   const badgePlan: 'free' | 'pro' | 'enterprise' =
     sub?.planTier === 'free' ? 'free' : sub?.planTier === 'enterprise' ? 'enterprise' : 'pro'
+
+  const usageLimit =
+    budget && !budget.isUnlimited && budget.effectiveLimit > 0 ? budget.effectiveLimit : budget?.tokensLimit ?? 0
 
   return (
     <div className="space-y-8">
@@ -73,16 +195,18 @@ export function BillingPortal(): JSX.Element {
         </div>
       ) : null}
 
-      {budget ? (
+      {budget && !budget.isUnlimited ? (
         <div className="rounded-card border border-divider bg-card p-6 shadow-sm">
           <p className="text-sm font-medium text-heading">
             Token Usage — {budget.currentMonth}
           </p>
           <div className="mt-3">
-            <TokenUsageBar used={budget.tokensUsed} limit={budget.tokensLimit} />
+            <TokenUsageBar used={budget.tokensUsed} limit={usageLimit} />
           </div>
           <p className="mt-2 text-xs text-muted">
-            {budget.tokensUsed.toLocaleString()} / {budget.tokensLimit.toLocaleString()} tokens · Resets {new Date(budget.resetAt).toLocaleDateString()}
+            {budget.tokensUsed.toLocaleString()} / {budget.tokensLimit.toLocaleString()} tokens
+            {budget.bonusTokens > 0 ? ` (+ ${budget.bonusTokens.toLocaleString()} bonus)` : ''}
+            {budget.resetAt ? ` · Resets ${new Date(budget.resetAt).toLocaleDateString()}` : ''}
           </p>
         </div>
       ) : null}
@@ -90,39 +214,39 @@ export function BillingPortal(): JSX.Element {
       <div>
         <h2 className="font-display text-lg text-heading">Upgrade</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          {plans.map((plan) => {
-            const current = plan.tier === sub?.planTier
-            return (
-              <div
-                key={plan.tier}
-                className={`rounded-card border bg-card p-4 shadow-sm ${current ? 'border-brand ring-1 ring-brand' : 'border-divider'}`}
-              >
-                <p className="font-display text-lg text-heading">{plan.name}</p>
-                <p className="mt-1 text-sm text-muted">
-                  ${(plan.price.monthly / 100).toFixed(0)}/mo · {plan.tokenLimit.toLocaleString()} tokens
-                </p>
-                <ul className="mt-2 list-inside list-disc text-xs text-muted">
-                  {plan.features.map((f) => (
-                    <li key={f}>{f}</li>
-                  ))}
-                </ul>
-                {current ? (
-                  <p className="mt-3 text-xs font-medium text-brand">Current plan</p>
-                ) : (
-                  <button
-                    type="button"
-                    className="mt-3 w-full rounded-md border border-brand py-2 text-sm font-medium text-brand hover:bg-brand/10"
-                    onClick={async () => {
-                      const { checkoutUrl } = await createCheckoutSession({ planTier: plan.tier, billingCycle: 'monthly' })
-                      window.open(checkoutUrl, '_blank', 'noopener,noreferrer')
-                    }}
-                  >
-                    Upgrade
-                  </button>
-                )}
-              </div>
-            )
-          })}
+          {plans
+            .filter((p) => p.tier !== 'free')
+            .map((plan) => {
+              const current = plan.tier === sub?.planTier
+              return (
+                <div
+                  key={plan.tier}
+                  className={`rounded-card border bg-card p-4 shadow-sm ${current ? 'border-brand ring-1 ring-brand' : 'border-divider'}`}
+                >
+                  <p className="font-display text-lg text-heading">{plan.name}</p>
+                  <p className="mt-1 text-sm text-muted">
+                    {formatInrPaise(plan.priceMonthlyPaise)}/mo · {plan.tokenLimit.toLocaleString()} tokens
+                  </p>
+                  <ul className="mt-2 list-inside list-disc text-xs text-muted">
+                    {plan.features.map((f) => (
+                      <li key={f}>{f}</li>
+                    ))}
+                  </ul>
+                  {current ? (
+                    <p className="mt-3 text-xs font-medium text-brand">Current plan</p>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={checkoutLoading}
+                      className="mt-3 w-full rounded-md border border-brand py-2 text-sm font-medium text-brand hover:bg-brand/10 disabled:opacity-50"
+                      onClick={() => void openSubscriptionCheckout(plan.tier as 'starter' | 'pro' | 'team', 'monthly')}
+                    >
+                      Upgrade
+                    </button>
+                  )}
+                </div>
+              )
+            })}
         </div>
       </div>
 
@@ -145,18 +269,25 @@ export function BillingPortal(): JSX.Element {
                 {invoices.map((inv) => (
                   <tr key={inv.id} className="border-t border-divider">
                     <td className="px-4 py-2 text-muted">{new Date(inv.createdAt).toLocaleDateString()}</td>
-                    <td className="px-4 py-2 text-heading">{formatMoney(inv.amount, inv.currency)}</td>
+                    <td className="px-4 py-2 text-heading">{formatInrPaise(inv.amountPaid)}</td>
                     <td className="px-4 py-2">
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                          inv.status === 'paid' ? 'bg-success-bg text-success' : 'bg-amber-500/15 text-amber-700'
+                          inv.status === 'paid' || inv.status === 'succeeded'
+                            ? 'bg-success-bg text-success'
+                            : 'bg-amber-500/15 text-amber-700'
                         }`}
                       >
-                        {inv.status === 'paid' ? 'Paid' : 'Open'}
+                        {inv.status === 'paid' || inv.status === 'succeeded' ? 'Paid' : 'Open'}
                       </span>
                     </td>
                     <td className="px-4 py-2">
-                      <a href={inv.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline">
+                      <a
+                        href={inv.hostedInvoiceUrl ?? inv.pdfUrl ?? '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-brand hover:underline"
+                      >
                         PDF ↗
                       </a>
                     </td>
@@ -168,15 +299,57 @@ export function BillingPortal(): JSX.Element {
         )}
       </div>
 
+      <div className="rounded-card border border-divider bg-card p-6 shadow-sm">
+        <h2 className="font-display text-lg text-heading">Run out of credits? Add more anytime.</h2>
+        <div className="mt-4 flex flex-col gap-4 md:flex-row">
+          <div className="flex flex-1 flex-col rounded-card border border-divider p-4">
+            <p className="font-medium text-heading">Starter Pack</p>
+            <p className="text-sm text-muted">100,000 tokens · 199</p>
+            <button
+              type="button"
+              disabled={checkoutLoading}
+              className="mt-3 rounded-md border border-brand py-2 text-sm font-medium text-brand hover:bg-brand/10 disabled:opacity-50"
+              onClick={() => void openTopUp('starter_pack')}
+            >
+              Buy Now
+            </button>
+          </div>
+          <div className="relative flex flex-1 flex-col rounded-card border border-brand p-4 ring-1 ring-brand">
+            <span className="absolute right-2 top-2 rounded-full bg-brand px-2 py-0.5 text-[10px] font-medium text-white">
+              Most Popular
+            </span>
+            <p className="font-medium text-heading">Builder Pack</p>
+            <p className="text-sm text-muted">500,000 tokens · 799</p>
+            <button
+              type="button"
+              disabled={checkoutLoading}
+              className="mt-3 rounded-md border border-brand py-2 text-sm font-medium text-brand hover:bg-brand/10 disabled:opacity-50"
+              onClick={() => void openTopUp('builder_pack')}
+            >
+              Buy Now
+            </button>
+          </div>
+          <div className="flex flex-1 flex-col rounded-card border border-divider p-4">
+            <p className="font-medium text-heading">Studio Pack</p>
+            <p className="text-sm text-muted">2,000,000 tokens · 2,499</p>
+            <button
+              type="button"
+              disabled={checkoutLoading}
+              className="mt-3 rounded-md border border-brand py-2 text-sm font-medium text-brand hover:bg-brand/10 disabled:opacity-50"
+              onClick={() => void openTopUp('studio_pack')}
+            >
+              Buy Now
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-wrap items-center gap-4">
         <button
           type="button"
           data-testid="manage-billing-btn"
           className="rounded-md border border-brand px-4 py-2 text-sm font-medium text-brand hover:bg-brand/10"
-          onClick={async () => {
-            const { portalUrl } = await createPortalSession()
-            window.open(portalUrl, '_blank', 'noopener,noreferrer')
-          }}
+          onClick={() => router.push('/settings/billing')}
         >
           Manage Billing →
         </button>
