@@ -1,7 +1,10 @@
-import api from '@/lib/axios'
+// import api from '@/lib/axios'
 import type { TokenBudget } from '@/types'
 
 export type { TokenBudget }
+
+// ── BILLING SERVICE TEMPORARILY DISABLED (local stubs; no gateway /billing proxy) ──
+// Remove the early returns below and uncomment the original `api.*` bodies when re-enabling billing.
 
 export interface Subscription {
   planTier: 'free' | 'starter' | 'pro' | 'team' | 'enterprise'
@@ -39,58 +42,84 @@ export interface RazorpayCheckoutData {
   prefill: { email: string; name: string }
 }
 
-interface SubscriptionRaw {
-  plan: string
-  status: string
-  currentPeriodEnd: string | null
-  cancelAtPeriodEnd: boolean
-  razorpayCustomerId: string | null
-}
-
-export async function getTokenBudget(): Promise<TokenBudget> {
-  const res = await api.get<{ data: TokenBudget }>('/billing/token-budget')
-  return res.data.data
-}
-
-export async function getSubscription(): Promise<Subscription> {
-  const res = await api.get<{ data: SubscriptionRaw }>('/billing/subscription')
-  const raw = res.data.data
+function stubTokenBudget(): TokenBudget {
+  const now = new Date()
+  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   return {
-    planTier: raw.plan as Subscription['planTier'],
-    status: raw.status as Subscription['status'],
-    currentPeriodEnd: raw.currentPeriodEnd ?? new Date().toISOString(),
-    cancelAtPeriodEnd: raw.cancelAtPeriodEnd,
-    razorpayCustomerId: raw.razorpayCustomerId,
+    tokensUsed: 0,
+    tokensLimit: 999_999,
+    tokensRemaining: 999_999,
+    bonusTokens: 0,
+    effectiveLimit: 999_999,
+    effectiveRemaining: 999_999,
+    percentUsed: 0,
+    planTier: 'free',
+    currentMonth: month,
+    resetAt: null,
+    isUnlimited: true,
+    warningThresholds: [
+      { percent: 80, triggered: false },
+      { percent: 95, triggered: false },
+    ],
+    creditState: 'active',
+    isOneTimeCredits: false,
   }
 }
 
+export async function getTokenBudget(): Promise<TokenBudget> {
+  return stubTokenBudget()
+  // const res = await api.get<{ data: TokenBudget }>('/billing/token-budget')
+  // return res.data.data
+}
+
+export async function getSubscription(): Promise<Subscription> {
+  return {
+    planTier: 'free',
+    status: 'active',
+    currentPeriodEnd: new Date(Date.now() + 864e9).toISOString(),
+    cancelAtPeriodEnd: false,
+    razorpayCustomerId: null,
+  }
+  // const res = await api.get<{ data: SubscriptionRaw }>('/billing/subscription')
+  // const raw = res.data.data
+  // return {
+  //   planTier: raw.plan as Subscription['planTier'],
+  //   status: raw.status as Subscription['status'],
+  //   currentPeriodEnd: raw.currentPeriodEnd ?? new Date().toISOString(),
+  //   cancelAtPeriodEnd: raw.cancelAtPeriodEnd,
+  //   razorpayCustomerId: raw.razorpayCustomerId,
+  // }
+}
+
 export async function getInvoices(): Promise<Invoice[]> {
-  const res = await api.get<{ data: { invoices: Invoice[] } }>('/billing/invoices')
-  return res.data.data.invoices
+  return []
+  // const res = await api.get<{ data: { invoices: Invoice[] } }>('/billing/invoices')
+  // return res.data.data.invoices
 }
 
 export async function getPlans(): Promise<Plan[]> {
-  const res = await api.get<{ data: { plans: PlanRow[] } }>('/billing/plans')
-  const rows = res.data.data.plans
-  return rows.map((p) => ({
-    tier: p.name,
-    name: p.displayName,
-    priceMonthlyPaise: p.priceMonthlyPaise,
-    priceYearlyPaise: p.priceYearlyPaise,
-    tokenLimit: p.tokenLimitMonthly,
-    projectLimit: p.projectLimit,
-    features: p.features,
-  }))
-}
-
-interface PlanRow {
-  name: string
-  displayName: string
-  priceMonthlyPaise: number
-  priceYearlyPaise: number
-  tokenLimitMonthly: number
-  projectLimit: number
-  features: string[]
+  return [
+    {
+      tier: 'free',
+      name: 'Free',
+      priceMonthlyPaise: 0,
+      priceYearlyPaise: 0,
+      tokenLimit: 50_000,
+      projectLimit: 3,
+      features: ['Full access while billing is offline'],
+    },
+  ]
+  // const res = await api.get<{ data: { plans: PlanRow[] } }>('/billing/plans')
+  // const rows = res.data.data.plans
+  // return rows.map((p) => ({
+  //   tier: p.name,
+  //   name: p.displayName,
+  //   priceMonthlyPaise: p.priceMonthlyPaise,
+  //   priceYearlyPaise: p.priceYearlyPaise,
+  //   tokenLimit: p.tokenLimitMonthly,
+  //   projectLimit: p.projectLimit,
+  //   features: p.features,
+  // }))
 }
 
 export async function createCheckoutSession(payload: {
@@ -98,8 +127,10 @@ export async function createCheckoutSession(payload: {
   billingCycle: 'monthly' | 'yearly'
   couponCode?: string
 }): Promise<{ checkoutData: RazorpayCheckoutData }> {
-  const res = await api.post<{ data: { checkoutData: RazorpayCheckoutData } }>('/billing/checkout', payload)
-  return res.data.data
+  void payload
+  throw new Error('Billing is temporarily disabled.')
+  // const res = await api.post<{ data: { checkoutData: RazorpayCheckoutData } }>('/billing/checkout', payload)
+  // return res.data.data
 }
 
 export async function createTopUpOrder(packName: string): Promise<{
@@ -108,10 +139,12 @@ export async function createTopUpOrder(packName: string): Promise<{
   tokenGrant: number
   razorpayKeyId: string
 }> {
-  const res = await api.post<{
-    data: { orderId: string; amountPaise: number; tokenGrant: number; razorpayKeyId: string }
-  }>('/billing/topup/order', { packName })
-  return res.data.data
+  void packName
+  throw new Error('Billing is temporarily disabled.')
+  // const res = await api.post<{
+  //   data: { orderId: string; amountPaise: number; tokenGrant: number; razorpayKeyId: string }
+  // }>('/billing/topup/order', { packName })
+  // return res.data.data
 }
 
 export async function verifyTopUp(payload: {
@@ -119,13 +152,16 @@ export async function verifyTopUp(payload: {
   razorpayPaymentId: string
   razorpaySignature: string
 }): Promise<{ success: boolean; tokensGranted: number; newBonusTotal: number }> {
-  const res = await api.post<{ data: { success: boolean; tokensGranted: number; newBonusTotal: number } }>(
-    '/billing/topup/verify',
-    payload,
-  )
-  return res.data.data
+  void payload
+  throw new Error('Billing is temporarily disabled.')
+  // const res = await api.post<{ data: { success: boolean; tokensGranted: number; newBonusTotal: number } }>(
+  //   '/billing/topup/verify',
+  //   payload,
+  // )
+  // return res.data.data
 }
 
 export async function cancelSubscription(): Promise<void> {
-  await api.post('/billing/cancel')
+  return
+  // await api.post('/billing/cancel')
 }

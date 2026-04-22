@@ -1,20 +1,29 @@
-import api from '@/lib/axios'
+// import api from '@/lib/axios'
 import type { AdminCoupon, AdminPlan, AdminRevenueSummary, AdminTransaction } from '@/types'
-import { unwrap } from '@/lib/api/envelope'
+// import { unwrap } from '@/lib/api/envelope'
 
-export async function getRevenueSummary(
-  from: string,
-  to: string,
-): Promise<AdminRevenueSummary> {
-  const body: unknown = await api.get('/admin/billing/summary', {
-    params: { from, to },
-  })
-  return unwrap<AdminRevenueSummary>(body)
+// ── BILLING SERVICE TEMPORARILY DISABLED — restore api + unwrap calls when billing-service is back ──
+
+const emptyRevenue = (): AdminRevenueSummary => ({
+  mrrCents: 0,
+  arrCents: 0,
+  churnRate: 0,
+  ltv: 0,
+  changes: { mrr: 0, arr: 0, churnRate: 0, ltv: 0 },
+})
+
+export async function getRevenueSummary(from: string, to: string): Promise<AdminRevenueSummary> {
+  void from
+  void to
+  return emptyRevenue()
+  // const body: unknown = await api.get('/admin/billing/summary', { params: { from, to } })
+  // return unwrap<AdminRevenueSummary>(body)
 }
 
 export async function getAdminPlans(): Promise<AdminPlan[]> {
-  const body: unknown = await api.get('/admin/billing/plans')
-  return unwrap<AdminPlan[]>(body)
+  return []
+  // const body: unknown = await api.get('/admin/billing/plans')
+  // return unwrap<AdminPlan[]>(body)
 }
 
 export async function updatePlan(
@@ -28,8 +37,21 @@ export async function updatePlan(
     features?: string[]
   },
 ): Promise<AdminPlan> {
-  const body: unknown = await api.patch(`/admin/billing/plans/${planId}`, payload)
-  return unwrap<AdminPlan>(body)
+  return {
+    id: planId,
+    tier: 'stub',
+    name: payload.name ?? 'Plan',
+    priceMonthly: payload.priceMonthly ?? 0,
+    priceYearly: payload.priceYearly ?? 0,
+    tokenLimit: payload.tokenLimit ?? 0,
+    projectLimit: payload.projectLimit ?? 0,
+    features: payload.features ?? [],
+    userCount: 0,
+    monthlyRevenueCents: 0,
+    stripePriceId: null,
+  }
+  // const body: unknown = await api.patch(`/admin/billing/plans/${planId}`, payload)
+  // return unwrap<AdminPlan>(body)
 }
 
 export interface PaginatedTransactions {
@@ -45,10 +67,10 @@ export async function listTransactions(params: {
   page?: number
   limit?: number
 }): Promise<PaginatedTransactions> {
-  const body: unknown = await api.get('/admin/billing/transactions', {
-    params,
-  })
-  return unwrap<PaginatedTransactions>(body)
+  void params
+  return { transactions: [], total: 0, page: 1, totalPages: 0 }
+  // const body: unknown = await api.get('/admin/billing/transactions', { params })
+  // return unwrap<PaginatedTransactions>(body)
 }
 
 export async function issueRefund(
@@ -56,32 +78,29 @@ export async function issueRefund(
   amountCents: number,
   reason: string,
 ): Promise<void> {
-  const body: unknown = await api.post(
-    `/admin/billing/transactions/${transactionId}/refund`,
-    { amountCents, reason },
-  )
-  unwrap<Record<string, never>>(body)
+  void transactionId
+  void amountCents
+  void reason
+  return
+  // const body: unknown = await api.post(
+  //   `/admin/billing/transactions/${transactionId}/refund`,
+  //   { amountCents, reason },
+  // )
+  // unwrap<Record<string, never>>(body)
 }
 
 export async function exportTransactions(): Promise<void> {
-  const res = (await api.get('/admin/billing/transactions/export', {
-    responseType: 'blob',
-  })) as Blob | string
-  const blob =
-    typeof res === 'string'
-      ? new Blob([res], { type: 'text/csv;charset=utf-8' })
-      : res
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `transactions-${new Date().toISOString().slice(0, 10)}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
+  return
+  // const res = (await api.get('/admin/billing/transactions/export', {
+  //   responseType: 'blob',
+  // })) as Blob | string
+  // ...
 }
 
 export async function listCoupons(): Promise<AdminCoupon[]> {
-  const body: unknown = await api.get('/admin/billing/coupons')
-  return unwrap<AdminCoupon[]>(body)
+  return []
+  // const body: unknown = await api.get('/admin/billing/coupons')
+  // return unwrap<AdminCoupon[]>(body)
 }
 
 export async function createCoupon(payload: {
@@ -91,12 +110,25 @@ export async function createCoupon(payload: {
   maxUses: number | null
   expiresAt: string | null
 }): Promise<AdminCoupon> {
-  const body: unknown = await api.post('/admin/billing/coupons', payload)
-  return unwrap<AdminCoupon>(body)
+  return {
+    id: 'stub',
+    code: payload.code,
+    discountType: payload.discountType,
+    discountValue: payload.discountValue,
+    maxUses: payload.maxUses,
+    usedCount: 0,
+    expiresAt: payload.expiresAt,
+    stripeCouponId: null,
+    createdAt: new Date().toISOString(),
+  }
+  // const body: unknown = await api.post('/admin/billing/coupons', payload)
+  // return unwrap<AdminCoupon>(body)
 }
 
 export async function deleteCoupon(couponId: string): Promise<void> {
-  await api.delete(`/admin/billing/coupons/${couponId}`)
+  void couponId
+  return
+  // await api.delete(`/admin/billing/coupons/${couponId}`)
 }
 
 export async function grantBonusCredits(payload: {
@@ -104,6 +136,7 @@ export async function grantBonusCredits(payload: {
   tokensToGrant: number
   reason: string
 }): Promise<{ newBonusTotal: number }> {
-  const body: unknown = await api.post('/billing/admin/grant-credits', payload)
-  return unwrap<{ newBonusTotal: number }>(body)
+  return { newBonusTotal: payload.tokensToGrant }
+  // const body: unknown = await api.post('/billing/admin/grant-credits', payload)
+  // return unwrap<{ newBonusTotal: number }>(body)
 }
