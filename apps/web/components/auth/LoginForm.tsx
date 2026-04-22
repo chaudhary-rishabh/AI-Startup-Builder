@@ -13,6 +13,8 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { ForgotPasswordForm } from '@/components/auth/ForgotPasswordForm'
 import { useAuthStore } from '@/store/authStore'
 
+import { navigateAfterLogin } from '@/lib/postLoginNavigation'
+
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
   password: z.string().min(1, 'Password is required'),
@@ -51,6 +53,8 @@ export function LoginForm(): JSX.Element {
         setTempToken(result.tempToken)
         return
       }
+
+      
       setUser({
         id: result.user.id,
         email: result.user.email,
@@ -60,9 +64,8 @@ export function LoginForm(): JSX.Element {
         plan: result.user.plan as 'free' | 'pro' | 'team' | 'enterprise',
         onboardingDone: result.user.onboardingDone,
       })
-      const redirectTarget =
-        typeof window !== 'undefined' ? sessionStorage.getItem('post_auth_redirect') || '/dashboard' : '/dashboard'
-      router.push(redirectTarget)
+      
+        navigateAfterLogin({ onboardingDone: result.user.onboardingDone })
     } catch (error: unknown) {
       const appError = error as { code?: string }
       if (appError.code === 'INVALID_CREDENTIALS') {
@@ -97,7 +100,7 @@ export function LoginForm(): JSX.Element {
         plan: result.user.plan as 'free' | 'pro' | 'team' | 'enterprise',
         onboardingDone: result.user.onboardingDone,
       })
-      router.push('/dashboard')
+      navigateAfterLogin({ onboardingDone: result.user.onboardingDone })
     } catch {
       setInlineError('Invalid authentication code.')
     } finally {

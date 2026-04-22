@@ -62,11 +62,15 @@ export function OnboardingWizard(): JSX.Element {
       return
     }
 
-    const checkoutRes = await api.post<{ data: { checkoutUrl: string } }>('/billing/checkout', {
-      plan,
-      billingCycle,
-    })
-    window.location.href = checkoutRes.data.data.checkoutUrl
+    // BILLING DISABLED — paid checkout unavailable; finish onboarding like free (restore Razorpay checkout when billing is back)
+    await api.patch('/users/profile', { onboardingDone: true })
+    router.push('/dashboard')
+    return
+    // const checkoutRes = await api.post<{ data: { checkoutUrl: string } }>('/billing/checkout', {
+    //   plan,
+    //   billingCycle,
+    // })
+    // window.location.href = checkoutRes.data.data.checkoutUrl
   }
 
   return (

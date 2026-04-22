@@ -88,15 +88,19 @@ export async function recordTokenUsage(
   tokensUsed: number,
   costUsd: string,
 ): Promise<void> {
-  try {
-    await fetch(`${env.BILLING_SERVICE_URL.replace(/\/$/, '')}/internal/token-usage/increment`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, tokensUsed, costUsd }),
-    })
-  } catch (e) {
-    console.error('[ai-service] recordTokenUsage failed', e)
-  }
+  void userId
+  void tokensUsed
+  void costUsd
+  // BILLING TEMPORARILY DISABLED — restore increment call when billing-service is back
+  // try {
+  //   await fetch(`${env.BILLING_SERVICE_URL.replace(/\/$/, '')}/internal/token-usage/increment`, {
+  //     method: 'POST',
+  //     headers: { 'Content-Type': 'application/json' },
+  //     body: JSON.stringify({ userId, tokensUsed, costUsd }),
+  //   })
+  // } catch (e) {
+  //   console.error('[ai-service] recordTokenUsage failed', e)
+  // }
 }
 
 export async function checkAndEmitBudgetWarnings(userId: string): Promise<void> {

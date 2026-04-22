@@ -16,7 +16,8 @@ import { userRoutes } from './routes/user.routes.js'
 import { projectRoutes } from './routes/project.routes.js'
 import { aiRoutes } from './routes/ai.routes.js'
 import { ragRoutes } from './routes/rag.routes.js'
-import { billingRoutes } from './routes/billing.routes.js'
+// BILLING ROUTES TEMPORARILY DISABLED — uncomment import + app.route('/billing') when billing-service is stable again
+// import { billingRoutes } from './routes/billing.routes.js'
 import { notificationRoutes } from './routes/notification.routes.js'
 import { analyticsRoutes } from './routes/analytics.routes.js'
 
@@ -56,7 +57,7 @@ app.route('/users', userRoutes)
 app.route('/projects', projectRoutes)
 app.route('/ai', aiRoutes)
 app.route('/rag', ragRoutes)
-app.route('/billing', billingRoutes)
+// app.route('/billing', billingRoutes)
 app.route('/notifications', notificationRoutes)
 app.route('/analytics', analyticsRoutes)
 

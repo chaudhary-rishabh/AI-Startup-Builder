@@ -13,7 +13,12 @@ describe('tokenBudget.service', () => {
       ok: true,
       json: async () => ({
         success: true,
-        data: { tokensUsed: 1000, tokensLimit: 50_000 },
+        data: {
+          allowed: true,
+          remaining: 49_000,
+          limit: 50_000,
+          creditState: 'active',
+        },
       }),
     })
     const { checkTokenBudget } = await import('../../src/services/tokenBudget.service.js')
@@ -27,7 +32,12 @@ describe('tokenBudget.service', () => {
       ok: true,
       json: async () => ({
         success: true,
-        data: { tokensUsed: 49_000, tokensLimit: 50_000 },
+        data: {
+          allowed: false,
+          remaining: 1000,
+          limit: 50_000,
+          creditState: 'active',
+        },
       }),
     })
     const { checkTokenBudget } = await import('../../src/services/tokenBudget.service.js')

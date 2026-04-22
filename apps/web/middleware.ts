@@ -1,17 +1,8 @@
-import { jwtVerify } from 'jose'
+import { jwtVerify, decodeJwt, importSPKI, errors } from 'jose'
 import { NextRequest, NextResponse } from 'next/server'
 
 const PUBLIC_PATHS = ['/', '/auth/callback']
 const ONBOARDING_PATH = '/onboarding'
-
-function decodeBase64(base64: string): ArrayBuffer {
-  const binary = atob(base64)
-  const bytes = new Uint8Array(binary.length)
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index)
-  }
-  return bytes.buffer
-}
 
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
@@ -59,20 +50,27 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     }
 
     const publicKeyBase64 = process.env.JWT_PUBLIC_KEY_BASE64 ?? ''
-    const publicKeyDer = decodeBase64(publicKeyBase64)
-    const publicKey = await crypto.subtle.importKey(
-      'spki',
-      publicKeyDer,
-      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-      false,
-      ['verify'],
-    )
-    const { payload } = await jwtVerify(token, publicKey)
+    const pem = atob(publicKeyBase64)
+    const publicKey = await importSPKI(pem, 'RS256')
+    
+    let payload;
+    try {
+      const result = await jwtVerify(token, publicKey)
+      payload = result.payload
+    } catch (err: any) {
+      // If the signature is valid but only expired, we let it pass.
+      // API Gateway will reject API requests and force the Axios interceptor to refresh it.
+      if (err instanceof errors.JWTExpired || err?.code === 'ERR_JWT_EXPIRED') {
+        payload = decodeJwt(token)
+      } else {
+        throw err;
+      }
+    }
 
     const isOnboardingDone = payload.onboardingDone as boolean | undefined
-    if (!isOnboardingDone && pathname !== ONBOARDING_PATH) {
-      return NextResponse.redirect(new URL(ONBOARDING_PATH, request.url))
-    }
+    // if (!isOnboardingDone && pathname !== ONBOARDING_PATH) {
+    //   return NextResponse.redirect(new URL(ONBOARDING_PATH, request.url))
+    // }
     if (isOnboardingDone && pathname === ONBOARDING_PATH) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
@@ -83,7 +81,8 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     requestHeaders.set('x-user-plan', String(payload.plan ?? ''))
 
     return NextResponse.next({ request: { headers: requestHeaders } })
-  } catch {
+  } catch (err) {
+    console.error('[Middleware Error]', err)
     const response = NextResponse.redirect(new URL('/', request.url))
     response.cookies.delete('access_token')
     return response

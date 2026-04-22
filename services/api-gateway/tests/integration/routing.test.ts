@@ -196,10 +196,11 @@ describe('Integration: routing', () => {
       expect(res.status).toBe(401)
     })
 
-    it('GET /billing/subscription returns 401 without a token', async () => {
-      const res = await app.request('/billing/subscription')
-      expect(res.status).toBe(401)
-    })
+    // BILLING ROUTES DISABLED — restore when `/billing` is mounted again
+    // it('GET /billing/subscription returns 401 without a token', async () => {
+    //   const res = await app.request('/billing/subscription')
+    //   expect(res.status).toBe(401)
+    // })
 
     it('GET /notifications returns 401 without a token', async () => {
       const res = await app.request('/notifications')
@@ -272,29 +273,26 @@ describe('Integration: routing', () => {
       expect(calledUrl).toContain('localhost:4005')
     })
 
-    it('GET /billing/subscription with valid JWT proxies to billing-service', async () => {
-      mockFetchOnce({ success: true, data: { plan: 'pro' } })
+    // BILLING ROUTES DISABLED — restore when `/billing` is mounted again
+    // it('GET /billing/subscription with valid JWT proxies to billing-service', async () => {
+    //   mockFetchOnce({ success: true, data: { plan: 'pro' } })
+    //   const res = await app.request('/billing/subscription', {
+    //     headers: authHeader(validToken),
+    //   })
+    //   expect(res.status).toBe(200)
+    // })
 
-      const res = await app.request('/billing/subscription', {
-        headers: authHeader(validToken),
-      })
-
-      expect(res.status).toBe(200)
-    })
-
-    it('GET /billing/token-usage with valid JWT proxies to billing-service', async () => {
-      const mockFetch = mockFetchOnce({ success: true, data: { tokensUsed: 0 } })
-
-      const res = await app.request('/billing/token-usage', {
-        headers: authHeader(validToken),
-      })
-
-      expect(res.status).toBe(200)
-      expect(mockFetch).toHaveBeenCalledOnce()
-      const [calledUrl] = mockFetch.mock.calls[0] as [string, RequestInit]
-      expect(calledUrl).toContain('localhost:4006')
-      expect(calledUrl).toContain('/billing/token-usage')
-    })
+    // it('GET /billing/token-usage with valid JWT proxies to billing-service', async () => {
+    //   const mockFetch = mockFetchOnce({ success: true, data: { tokensUsed: 0 } })
+    //   const res = await app.request('/billing/token-usage', {
+    //     headers: authHeader(validToken),
+    //   })
+    //   expect(res.status).toBe(200)
+    //   expect(mockFetch).toHaveBeenCalledOnce()
+    //   const [calledUrl] = mockFetch.mock.calls[0] as [string, RequestInit]
+    //   expect(calledUrl).toContain('localhost:4006')
+    //   expect(calledUrl).toContain('/billing/token-usage')
+    // })
 
     it('GET /notifications with valid JWT proxies to notification-service', async () => {
       mockFetchOnce({ success: true, data: [] })
@@ -341,20 +339,18 @@ describe('Integration: routing', () => {
     })
   })
 
-  // ── Stripe webhook (no JWT) ─────────────────────────────────────────────────
-  describe('POST /billing/webhooks/stripe', () => {
-    it('passes through without JWT requirement', async () => {
-      mockFetchOnce({ received: true })
-
-      const res = await app.request('/billing/webhooks/stripe', {
-        method: 'POST',
-        body: '{"type":"payment_intent.succeeded"}',
-        headers: { 'content-type': 'application/json', 'stripe-signature': 'sig-abc' },
-      })
-
-      expect(res.status).toBe(200)
-    })
-  })
+  // BILLING WEBHOOKS DISABLED — restore when `/billing` is mounted again
+  // describe('POST /billing/webhooks/stripe', () => {
+  //   it('passes through without JWT requirement', async () => {
+  //     mockFetchOnce({ received: true })
+  //     const res = await app.request('/billing/webhooks/stripe', {
+  //       method: 'POST',
+  //       body: '{"type":"payment_intent.succeeded"}',
+  //       headers: { 'content-type': 'application/json', 'stripe-signature': 'sig-abc' },
+  //     })
+  //     expect(res.status).toBe(200)
+  //   })
+  // })
 
   // ── CORS headers ────────────────────────────────────────────────────────────
   describe('CORS', () => {

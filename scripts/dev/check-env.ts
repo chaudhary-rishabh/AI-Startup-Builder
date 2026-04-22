@@ -17,7 +17,7 @@ const ALL_SERVICES_REQUIRED = [
 const AUTH_SERVICE_REQUIRED = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'] as const
 const AI_SERVICE_REQUIRED = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY'] as const
 const RAG_SERVICE_REQUIRED = ['PINECONE_API_KEY', 'PINECONE_INDEX_NAME', 'PINECONE_ENVIRONMENT'] as const
-const BILLING_SERVICE_REQUIRED = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'] as const
+const BILLING_SERVICE_REQUIRED = ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET'] as const
 const NOTIFICATION_SERVICE_REQUIRED = ['RESEND_API_KEY'] as const
 const AWS_REQUIRED = ['AWS_REGION', 'AWS_S3_BUCKET_UPLOADS', 'AWS_S3_BUCKET_EXPORTS'] as const
 const FRONTEND_REQUIRED = ['NEXT_PUBLIC_API_URL', 'NEXT_PUBLIC_APP_URL'] as const
@@ -35,8 +35,9 @@ const DESCRIPTIONS: Record<string, string> = {
   PINECONE_API_KEY: 'Pinecone API key for vector storage',
   PINECONE_INDEX_NAME: 'Pinecone index name for RAG',
   PINECONE_ENVIRONMENT: 'Pinecone environment / region identifier',
-  STRIPE_SECRET_KEY: 'Stripe secret key for billing API',
-  STRIPE_WEBHOOK_SECRET: 'Stripe webhook signing secret',
+  RAZORPAY_KEY_ID: 'Razorpay key ID for billing API',
+  RAZORPAY_KEY_SECRET: 'Razorpay key secret for billing API',
+  RAZORPAY_WEBHOOK_SECRET: 'Razorpay webhook signing secret',
   RESEND_API_KEY: 'Resend API key for transactional email',
   AWS_REGION: 'AWS region for S3 and other services',
   AWS_S3_BUCKET_UPLOADS: 'S3 bucket for user uploads',

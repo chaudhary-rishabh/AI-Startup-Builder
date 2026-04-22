@@ -7,7 +7,8 @@ export default defineConfig({
   out: './src/db/migrations',
   dialect: 'postgresql',
   dbCredentials: { url: env.DATABASE_URL },
-  tablesFilter: ['projects_*', 'project_exports'],
+  schemaFilter: ['projects'],
+  tablesFilter: ['projects', 'phase_outputs', 'project_files', 'design_canvas', 'conversation_messages', 'project_exports'],
   verbose: true,
   strict: true,
 })
