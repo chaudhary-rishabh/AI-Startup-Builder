@@ -1,8 +1,7 @@
-import Anthropic from '@anthropic-ai/sdk'
-
 import type { ProjectContext } from '@repo/types'
 
 import { env } from '../config/env.js'
+import { chatComplete, minimaxClient, MINIMAX_MODEL } from '../lib/providers.js'
 
 export interface DocDefinition {
   docNumber: number
@@ -114,19 +113,14 @@ export async function buildDocContent(
   context: ProjectContext,
 ): Promise<string> {
   const data = getRelevantOutput(doc, context)
-  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY })
   const prompt = `Format the following data as a professional ${doc.name} document in Markdown. Use headers, tables, and bullet points. Data: ${JSON.stringify(data)}`
   try {
-    const msg = await client.messages.create({
-      model: 'claude-haiku-4-5',
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: prompt }],
-    })
-    const blocks = msg.content
-    let text = ''
-    for (const b of blocks) {
-      if (b.type === 'text' && 'text' in b) text += b.text
-    }
+    const text = await chatComplete(
+      minimaxClient,
+      MINIMAX_MODEL,
+      [{ role: 'user', content: prompt }],
+      4096,
+    )
     if (text.trim().length > 0) return text
   } catch {
     /* fallback below */

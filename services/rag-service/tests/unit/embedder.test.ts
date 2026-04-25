@@ -11,6 +11,6 @@ describe('embedTexts', () => {
   it('returns single embedding', async () => {
     const { embedSingleText } = await import('../../src/services/embedder.service.js')
     const v = await embedSingleText('hello')
-    expect(v.length).toBe(3072)
+    expect(v.length).toBe(768)
   })
 })

@@ -18,16 +18,25 @@ const streamState = vi.hoisted(() => ({
   delayFirstChunkMs: 0,
 }))
 
-const anthropicMessages = vi.hoisted(() => ({
-  stream: vi.fn(),
-  create: vi.fn(),
-}))
+const streamChatMock = vi.hoisted(() =>
+  vi.fn(async function* () {
+    const text = streamState.text
+    const delay = streamState.delayFirstChunkMs
+    if (delay > 0) await new Promise((r) => setTimeout(r, delay))
+    yield text
+  }),
+)
 
-vi.mock('@anthropic-ai/sdk', () => ({
-  default: class {
-    messages = anthropicMessages
-  },
-}))
+const chatCompleteMock = vi.hoisted(() => vi.fn(async () => '# Doc\n\nBody\n'))
+
+vi.mock('../../src/lib/providers.js', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../../src/lib/providers.js')>()
+  return {
+    ...mod,
+    streamChatCollect: streamChatCollectMock,
+    chatComplete: chatCompleteMock,
+  }
+})
 
 type ProjectStore = {
   contextByProject: Map<string, Record<string, unknown>>
@@ -220,26 +229,13 @@ describe.skipIf(skipFullFlow)('Full AI Service Flow', () => {
 
     token = await signTestAccessToken({ sub: uid, plan: 'free' })
 
-    anthropicMessages.stream.mockImplementation(() => {
+    streamChatMock.mockImplementation(async function* () {
       const text = streamState.text
       const delay = streamState.delayFirstChunkMs
-      return {
-        async *[Symbol.asyncIterator]() {
-          if (delay > 0) await new Promise((r) => setTimeout(r, delay))
-          yield {
-            type: 'content_block_delta',
-            delta: { type: 'text_delta', text },
-          }
-        },
-        finalMessage: async () => ({
-          usage: { input_tokens: 5, output_tokens: Math.max(1, Math.ceil(text.length / 4)) },
-        }),
-      }
+      if (delay > 0) await new Promise((r) => setTimeout(r, delay))
+      yield text
     })
-    anthropicMessages.create.mockResolvedValue({
-      content: [{ type: 'text', text: '# Doc\n\nBody\n' }],
-      usage: { input_tokens: 2, output_tokens: 4 },
-    })
+    chatCompleteMock.mockResolvedValue('# Doc\n\nBody\n')
 
     fetchSpy = installFetchMock(store)
   })

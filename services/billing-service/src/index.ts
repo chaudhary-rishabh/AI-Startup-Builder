@@ -27,6 +27,12 @@ function shouldStartServer(): boolean {
 if (shouldStartServer()) {
   void (async () => {
     void env
+    if (process.env.BILLING_BYPASS === 'true') {
+      console.warn('⚠️  ──────────────────────────────────────────────────')
+      console.warn('⚠️  BILLING_BYPASS is ON — token limits are DISABLED')
+      console.warn('⚠️  This must NEVER be set in production or staging.')
+      console.warn('⚠️  ──────────────────────────────────────────────────')
+    }
     const db = getDb()
     await db.execute(sql`SELECT 1`)
     logger.info('Database connected')

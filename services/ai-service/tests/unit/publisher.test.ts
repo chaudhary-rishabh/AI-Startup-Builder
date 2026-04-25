@@ -28,7 +28,7 @@ describe('publisher', () => {
       { a: 1 },
       100,
       50,
-      'claude-opus-4-5',
+      'MiniMax-M2.7',
     )
     expect(xaddSpy).toHaveBeenCalled()
     const args = xaddSpy.mock.calls[0] as string[]

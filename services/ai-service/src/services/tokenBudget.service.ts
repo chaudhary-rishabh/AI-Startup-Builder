@@ -67,10 +67,10 @@ export async function checkTokenBudget(
       remaining: d.remaining ?? 0,
       limit: d.limit ?? 50_000,
       creditState,
-      effectiveRemaining: d.effectiveRemaining,
-      effectiveLimit: d.effectiveLimit,
-      planTier: d.planTier,
-      isOneTimeCredits: d.isOneTimeCredits,
+      effectiveRemaining: d.effectiveRemaining ?? d.remaining ?? 0,
+      effectiveLimit: d.effectiveLimit ?? d.limit ?? 50_000,
+      planTier: d.planTier ?? 'free',
+      isOneTimeCredits: d.isOneTimeCredits ?? false,
     }
   } catch (e) {
     console.warn('[ai-service] checkTokenBudget: billing-service unavailable, fail-open', e)

@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const messagesCreate = vi.hoisted(() => vi.fn())
+const chatComplete = vi.hoisted(() => vi.fn())
+const geminiComplete = vi.hoisted(() => vi.fn())
 
-vi.mock('@anthropic-ai/sdk', () => ({
-  default: class AnthropicMock {
-    messages = { create: messagesCreate }
-  },
-}))
+vi.mock('../../src/lib/providers.js', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../../src/lib/providers.js')>()
+  return { ...mod, chatComplete, geminiComplete }
+})
 
 const checkTokenBudget = vi.hoisted(() =>
   vi.fn().mockResolvedValue({ allowed: true, remaining: 50_000, limit: 50_000 }),
@@ -29,10 +29,8 @@ describe('chat routes', () => {
     vi.clearAllMocks()
     app = createApp()
     token = await signTestAccessToken({ sub: '550e8400-e29b-41d4-a716-446655440000' })
-    messagesCreate.mockResolvedValue({
-      content: [{ type: 'text', text: 'hello' }],
-      usage: { input_tokens: 10, output_tokens: 5 },
-    })
+    chatComplete.mockResolvedValue('hello')
+    geminiComplete.mockResolvedValue('hello')
   })
 
   it('POST /ai/chat returns content and token counts', async () => {
@@ -46,7 +44,9 @@ describe('chat routes', () => {
       data: { content: string; tokensUsed: number; model: string }
     }
     expect(body.data.content).toBe('hello')
-    expect(body.data.tokensUsed).toBe(15)
+    expect(body.data.tokensUsed).toBe(
+      Math.ceil('Say hi'.length / 4) + Math.ceil('hello'.length / 4),
+    )
     expect(recordTokenUsage).toHaveBeenCalled()
   })
 })

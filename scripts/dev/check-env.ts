@@ -15,7 +15,7 @@ const ALL_SERVICES_REQUIRED = [
 ] as const
 
 const AUTH_SERVICE_REQUIRED = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'] as const
-const AI_SERVICE_REQUIRED = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY'] as const
+const AI_SERVICE_REQUIRED = ['DEEPSEEK_API_KEY', 'DEEPSEEK_R1_API_KEY', 'GEMINI_API_KEY'] as const
 const RAG_SERVICE_REQUIRED = ['PINECONE_API_KEY', 'PINECONE_INDEX_NAME', 'PINECONE_ENVIRONMENT'] as const
 const BILLING_SERVICE_REQUIRED = ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET'] as const
 const NOTIFICATION_SERVICE_REQUIRED = ['RESEND_API_KEY'] as const
@@ -31,7 +31,6 @@ const DESCRIPTIONS: Record<string, string> = {
   GOOGLE_CLIENT_ID: 'Google OAuth 2.0 client ID',
   GOOGLE_CLIENT_SECRET: 'Google OAuth 2.0 client secret',
   ANTHROPIC_API_KEY: 'Anthropic API key for Claude models',
-  OPENAI_API_KEY: 'OpenAI API key for embeddings / optional models',
   PINECONE_API_KEY: 'Pinecone API key for vector storage',
   PINECONE_INDEX_NAME: 'Pinecone index name for RAG',
   PINECONE_ENVIRONMENT: 'Pinecone environment / region identifier',

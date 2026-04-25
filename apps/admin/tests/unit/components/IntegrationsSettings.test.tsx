@@ -5,9 +5,9 @@ import { vi } from 'vitest'
 
 const mockKeys: IntegrationKey[] = [
   {
-    service: 'anthropic',
-    label: 'Anthropic (Claude API)',
-    apiKey: 'sk-ant-••••••••1234',
+    service: 'minimax',
+    label: 'MiniMax (Phase 1–3, 6 agents)',
+    apiKey: 'mm-••••••••1234',
     isSet: true,
     lastValidatedAt: new Date().toISOString(),
     validationStatus: 'valid',
@@ -32,7 +32,7 @@ describe('IntegrationsSettings', () => {
         onValidate={vi.fn()}
       />,
     )
-    expect(screen.getByText('Anthropic (Claude API)')).toBeInTheDocument()
+    expect(screen.getByText('MiniMax (Phase 1–3, 6 agents)')).toBeInTheDocument()
     expect(screen.getByText('Pinecone (Vector DB)')).toBeInTheDocument()
   })
 
@@ -74,7 +74,7 @@ describe('IntegrationsSettings', () => {
     )
     const validateBtns = screen.getAllByRole('button', { name: /validate/i })
     fireEvent.click(validateBtns[0])
-    await waitFor(() => expect(onValidate).toHaveBeenCalledWith('anthropic'))
+    await waitFor(() => expect(onValidate).toHaveBeenCalledWith('minimax'))
   })
 
   it('security note visible at bottom of page', () => {
@@ -99,7 +99,7 @@ describe('IntegrationsSettings', () => {
       />,
     )
     expect(
-      screen.getByDisplayValue('sk-ant-••••••••1234'),
+      screen.getByDisplayValue('mm-••••••••1234'),
     ).toBeInTheDocument()
   })
 })

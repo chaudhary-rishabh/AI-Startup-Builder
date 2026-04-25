@@ -105,9 +105,10 @@ ${GOLDEN_CONSTRAINT}
 }
 
 const MODEL_CONTEXT_LIMIT: Record<string, number> = {
-  'claude-sonnet-4-5': 200_000,
-  'claude-opus-4-5': 200_000,
-  'claude-haiku-4-5': 200_000,
+  'MiniMax-M2.7': 1_000_000,
+  'deepseek-v4-flash': 128_000,
+  'deepseek-reasoner': 128_000,
+  'gemini-2.0-flash': 1_000_000,
 }
 
 export function validatePrompt(system: string, user: string, model: string): void {

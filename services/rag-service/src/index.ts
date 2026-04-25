@@ -32,7 +32,7 @@ async function main(): Promise<void> {
     const exists = indexList.some((i) => i.name === env.PINECONE_INDEX_NAME)
     if (!exists) {
       logger.error(
-        `Pinecone index '${env.PINECONE_INDEX_NAME}' not found. Create it with: dimension=3072, metric=dotproduct, type=serverless`,
+        `Pinecone index '${env.PINECONE_INDEX_NAME}' not found. Create it with: dimension=768, metric=dotproduct, type=serverless`,
       )
       process.exit(1)
     }

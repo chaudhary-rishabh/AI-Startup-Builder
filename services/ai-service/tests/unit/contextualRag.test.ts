@@ -1,12 +1,21 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-const anthropicCreate = vi.hoisted(() => vi.fn())
 const cohereRerank = vi.hoisted(() => vi.fn())
 
-vi.mock('@anthropic-ai/sdk', () => ({
-  default: class AnthropicMock {
-    messages = { create: anthropicCreate }
-  },
+vi.mock('../../src/lib/providers.js', () => ({
+  geminiComplete: vi.fn().mockResolvedValue('prefix text'),
+  chatComplete: vi.fn().mockResolvedValue('query one\nquery two'),
+  streamChat: vi.fn(),
+  streamChatCollect: vi.fn(),
+  chatCompleteWithUsage: vi.fn(),
+  minimaxClient: {},
+  MINIMAX_MODEL: 'MiniMax-M2.7',
+  deepseekClient: {},
+  DEEPSEEK_MODEL: 'deepseek-v4-flash',
+  deepseekR1Client: {},
+  DEEPSEEK_R1_MODEL: 'deepseek-reasoner',
+  geminiClient: {},
+  GEMINI_MODEL: 'gemini-2.0-flash',
 }))
 
 vi.mock('cohere-ai', () => ({
@@ -15,6 +24,7 @@ vi.mock('cohere-ai', () => ({
   },
 }))
 
+import { geminiComplete, chatComplete } from '../../src/lib/providers.js'
 import type { EnrichedChunk } from '../../src/services/contextualRag.service.js'
 import {
   formatForPrompt,
@@ -45,19 +55,16 @@ function chunk(partial: Partial<EnrichedChunk> & Pick<EnrichedChunk, 'docId' | '
 describe('contextualRag.service', () => {
   afterEach(() => {
     vi.restoreAllMocks()
-    anthropicCreate.mockReset()
+    vi.mocked(geminiComplete).mockReset()
+    vi.mocked(geminiComplete).mockResolvedValue('prefix text')
+    vi.mocked(chatComplete).mockReset()
+    vi.mocked(chatComplete).mockResolvedValue('query one\nquery two')
     cohereRerank.mockReset()
   })
 
-  it('generateChunkContext uses Haiku with cache_control on document', async () => {
-    anthropicCreate.mockResolvedValue({
-      content: [{ type: 'text', text: 'prefix text' }],
-    })
+  it('generateChunkContext uses Gemini', async () => {
     await generateChunkContext('whole doc', 'chunk')
-    const arg = anthropicCreate.mock.calls[0]?.[0] as {
-      system: Array<{ cache_control?: { type: string } }>
-    }
-    expect(arg.system[0]?.cache_control?.type).toBe('ephemeral')
+    expect(vi.mocked(geminiComplete)).toHaveBeenCalled()
   })
 
   it('fuseRanks deduplicates by chunkId and keeps highest RRF score', () => {
@@ -135,9 +142,6 @@ describe('contextualRag.service', () => {
   })
 
   it('retrieveForAgent calls semantic and BM25 endpoints', async () => {
-    anthropicCreate.mockResolvedValue({
-      content: [{ type: 'text', text: 'query one\nquery two' }],
-    })
     const fetchMock = vi.fn().mockImplementation(async (url: string | URL) => {
       const u = String(url)
       if (u.includes('/rag/query') || u.includes('/rag/bm25-query')) {
@@ -180,7 +184,6 @@ describe('contextualRag.service', () => {
 
   it('returns empty result when rag-service is down', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('down'))
-    anthropicCreate.mockResolvedValue({ content: [{ type: 'text', text: 'q' }] })
     const res = await retrieveForAgent(
       '550e8400-e29b-41d4-a716-446655440000',
       'task',

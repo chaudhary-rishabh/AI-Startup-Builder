@@ -6,7 +6,22 @@ const EnvSchema = z.object({
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url(),
   JWT_PUBLIC_KEY_BASE64: z.string().min(1),
-  ANTHROPIC_API_KEY: z.string().min(1),
+
+  MINIMAX_API_KEY: z.string().min(1),
+  MINIMAX_BASE_URL: z.string().url().default('https://api.minimax.chat/v1'),
+  MINIMAX_MODEL: z.string().default('MiniMax-M2.7'),
+
+  DEEPSEEK_API_KEY: z.string().min(1),
+  DEEPSEEK_BASE_URL: z.string().url().default('https://api.deepseek.com/v1'),
+  DEEPSEEK_MODEL: z.string().default('deepseek-v4-flash'),
+
+  DEEPSEEK_R1_API_KEY: z.string().optional(),
+  DEEPSEEK_R1_BASE_URL: z.string().url().default('https://api.deepseek.com/v1'),
+  DEEPSEEK_R1_MODEL: z.string().default('deepseek-reasoner'),
+
+  GEMINI_API_KEY: z.string().min(1),
+  GEMINI_MODEL: z.string().default('gemini-2.0-flash'),
+
   COHERE_API_KEY: z.string().min(1),
   PROJECT_SERVICE_URL: z.string().url().default('http://localhost:4003'),
   BILLING_SERVICE_URL: z.string().url().default('http://localhost:4006'),

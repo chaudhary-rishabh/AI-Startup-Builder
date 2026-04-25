@@ -2,26 +2,15 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const streamText = vi.hoisted(() => ({ current: '{}' }))
 
-vi.mock('@anthropic-ai/sdk', () => {
-  class MockAnthropic {
-    messages = {
-      stream: vi.fn(() => {
-        const text = streamText.current
-        return {
-          async *[Symbol.asyncIterator]() {
-            yield {
-              type: 'content_block_delta',
-              delta: { type: 'text_delta', text },
-            }
-          },
-          finalMessage: async () => ({
-            usage: { input_tokens: 5, output_tokens: Math.max(1, Math.ceil(text.length / 4)) },
-          }),
-        }
-      }),
-    }
-  }
-  return { default: MockAnthropic }
+const streamChat = vi.hoisted(() =>
+  vi.fn(async function* () {
+    yield streamText.current
+  }),
+)
+
+vi.mock('../../src/lib/providers.js', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../../src/lib/providers.js')>()
+  return { ...mod, streamChat }
 })
 
 const updateAgentRunStatus = vi.hoisted(() => vi.fn())

@@ -1,8 +1,7 @@
-import Anthropic from '@anthropic-ai/sdk'
 import { CohereClient } from 'cohere-ai'
 
 import { env } from '../config/env.js'
-import { selectModelForContextGeneration } from './modelRouter.service.js'
+import { chatComplete, geminiComplete, minimaxClient, MINIMAX_MODEL } from '../lib/providers.js'
 
 import type { ProjectContext } from '@repo/types'
 
@@ -30,34 +29,16 @@ export interface ContextualRagResult {
 const RRF_K = 60
 
 export async function generateChunkContext(wholeDocument: string, chunkText: string): Promise<string> {
-  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY })
-  const model = selectModelForContextGeneration()
-  const msg = await client.messages.create({
-    model,
-    max_tokens: 512,
-    system: [
-      {
-        type: 'text',
-        text: `<document>\n${wholeDocument}\n</document>`,
-        cache_control: { type: 'ephemeral' },
-      } as never,
-    ],
-    messages: [
-      {
-        role: 'user',
-        content: `Here is the chunk to situate within the whole document:
+  const prompt = `<document>
+${wholeDocument}
+</document>
+Here is the chunk to situate within the whole document:
 <chunk>
 ${chunkText}
 </chunk>
 Give a short succinct context (50-100 tokens) to situate this chunk within the document for search retrieval.
-Answer ONLY with the succinct context and nothing else.`,
-      },
-    ],
-  })
-  return msg.content
-    .filter((b): b is Anthropic.Messages.TextBlock => b.type === 'text')
-    .map((b) => b.text)
-    .join('\n')
+Answer ONLY with the succinct context and nothing else.`
+  return geminiComplete(prompt, 512)
 }
 
 function chunkKey(c: EnrichedChunk): string {
@@ -210,22 +191,17 @@ async function bm25Search(query: string): Promise<EnrichedChunk[]> {
 
 async function buildQueries(agentTask: string): Promise<string[]> {
   try {
-    const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY })
-    const model = selectModelForContextGeneration()
-    const msg = await client.messages.create({
-      model,
-      max_tokens: 256,
-      messages: [
+    const text = await chatComplete(
+      minimaxClient,
+      MINIMAX_MODEL,
+      [
         {
           role: 'user',
           content: `Produce 2-3 short search queries (one per line, no numbering) for retrieving document passages for:\n${agentTask}`,
         },
       ],
-    })
-    const text = msg.content
-      .filter((b): b is Anthropic.Messages.TextBlock => b.type === 'text')
-      .map((b) => b.text)
-      .join('\n')
+      256,
+    )
     const lines = text
       .split('\n')
       .map((l) => l.trim())

@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
 import { env } from '../config/env.js'
 import { logger } from '../lib/logger.js'
@@ -21,17 +21,9 @@ export interface EnrichmentResult {
   costUsd: string
 }
 
-function calculateEnrichmentCost(
-  docTokens: number,
-  cacheHits: number,
-  cacheMisses: number,
-  outputTokens: number,
-): string {
-  const missTokenCost = (docTokens / 1000) * 0.00025 * cacheMisses
-  const hitTokenCost = (docTokens / 1000) * 0.000025 * cacheHits
-  const outputCost = (outputTokens / 1000) * 0.00125
-  const total = missTokenCost + hitTokenCost + outputCost
-  return total.toFixed(6)
+function calculateEnrichmentCost(outputTokens: number): string {
+  const outputCost = (outputTokens / 1000) * 0.0004
+  return outputCost.toFixed(6)
 }
 
 const SYSTEM_TEMPLATE = (fullDocumentText: string) =>
@@ -69,10 +61,13 @@ export async function enrichChunks(
     }
   }
 
-  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY })
+  const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY)
+  const model = genAI.getGenerativeModel({
+    model: env.GEMINI_MODEL,
+    systemInstruction: SYSTEM_TEMPLATE(fullDocumentText),
+  })
+
   const enrichedChunks: EnrichedChunk[] = []
-  let cacheHits = 0
-  let cacheMisses = 0
   let totalContextTokens = 0
 
   void docMetadata
@@ -80,38 +75,10 @@ export async function enrichChunks(
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i]!
     try {
-      const systemBlock = {
-        type: 'text' as const,
-        text: SYSTEM_TEMPLATE(fullDocumentText),
-        cache_control: { type: 'ephemeral' as const },
-      }
-
-      const response = await client.messages.create({
-        model: 'claude-haiku-4-5',
-        max_tokens: 200,
-        system: [systemBlock as never],
-        messages: [
-          {
-            role: 'user',
-            content: USER_TEMPLATE(chunk.text),
-          },
-        ],
-      })
-
-      const first = response.content[0]
-      const contextualPrefix =
-        first && first.type === 'text' ? first.text.trim() : ''
-
-      const usage = response.usage as {
-        cache_read_input_tokens?: number
-        output_tokens?: number
-      }
-      if ((usage?.cache_read_input_tokens ?? 0) > 0) {
-        cacheHits++
-      } else {
-        cacheMisses++
-      }
-      totalContextTokens += usage?.output_tokens ?? 0
+      const result = await model.generateContent(USER_TEMPLATE(chunk.text))
+      const contextualPrefix = result.response.text().trim()
+      const outTok = Math.max(1, Math.ceil(contextualPrefix.length / 4))
+      totalContextTokens += outTok
 
       enrichedChunks.push({
         originalText: chunk.text,
@@ -139,8 +106,13 @@ export async function enrichChunks(
     }
   }
 
-  const docTokens = Math.max(1, Math.ceil(fullDocumentText.length / 4))
-  const costUsd = calculateEnrichmentCost(docTokens, cacheHits, cacheMisses, totalContextTokens)
+  const costUsd = calculateEnrichmentCost(totalContextTokens)
 
-  return { enrichedChunks, totalContextTokens, cacheHits, cacheMisses, costUsd }
+  return {
+    enrichedChunks,
+    totalContextTokens,
+    cacheHits: 0,
+    cacheMisses: chunks.length,
+    costUsd,
+  }
 }

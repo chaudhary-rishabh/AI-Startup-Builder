@@ -7,8 +7,10 @@ import type { IntegrationKey } from '@/types'
 import { cn } from '@/lib/cn'
 
 const SERVICE_ORDER: IntegrationKey['service'][] = [
-  'anthropic',
-  'openai',
+  'minimax',
+  'deepseek',
+  'deepseek_r1',
+  'gemini',
   'stripe',
   'github',
   'resend',
@@ -18,24 +20,28 @@ const SERVICE_ORDER: IntegrationKey['service'][] = [
 function ServiceIcon({ service }: { service: IntegrationKey['service'] }) {
   const cls = 'h-6 w-6'
   switch (service) {
-    case 'anthropic':
+    case 'minimax':
       return (
         <svg className={cls} viewBox="0 0 24 24" aria-hidden>
-          <circle cx="12" cy="12" r="10" fill="#D4A574" />
-          <text
-            x="12"
-            y="15"
-            textAnchor="middle"
-            className="fill-white text-[8px] font-bold"
-          >
-            A
-          </text>
+          <rect width="24" height="24" rx="4" fill="#6366F1" />
         </svg>
       )
-    case 'openai':
+    case 'deepseek':
       return (
         <svg className={cls} viewBox="0 0 24 24" aria-hidden>
-          <rect width="24" height="24" rx="4" fill="#10A37F" />
+          <rect width="24" height="24" rx="4" fill="#0EA5E9" />
+        </svg>
+      )
+    case 'deepseek_r1':
+      return (
+        <svg className={cls} viewBox="0 0 24 24" aria-hidden>
+          <rect width="24" height="24" rx="4" fill="#0284C7" />
+        </svg>
+      )
+    case 'gemini':
+      return (
+        <svg className={cls} viewBox="0 0 24 24" aria-hidden>
+          <rect width="24" height="24" rx="4" fill="#4285F4" />
         </svg>
       )
     case 'stripe':

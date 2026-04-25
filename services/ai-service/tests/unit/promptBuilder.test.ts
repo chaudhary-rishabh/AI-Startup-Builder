@@ -42,6 +42,6 @@ describe('promptBuilder.service', () => {
 
   it('validatePrompt throws when prompt too large', () => {
     const huge = 'x'.repeat(500_000)
-    expect(() => validatePrompt(huge, huge, 'claude-sonnet-4-5')).toThrow(PromptTooLargeError)
+    expect(() => validatePrompt(huge, huge, 'MiniMax-M2.7')).toThrow(PromptTooLargeError)
   })
 })

@@ -29,7 +29,9 @@ export const StartAgentRunSchema = z.object({
   projectId: z.string().uuid(),
   phase: z.number().int().min(1).max(6),
   agentType: z.enum(agentTypeValues),
-  model: z.enum(['claude-sonnet-4-5', 'claude-opus-4-5']).optional(),
+  model: z
+    .enum(['MiniMax-M2.7', 'deepseek-v4-flash', 'deepseek-reasoner', 'gemini-2.0-flash'])
+    .optional(),
   context: z.record(z.unknown()).optional(),
 })
 
@@ -42,7 +44,9 @@ export const ChatMessageSchema = z.object({
       }),
     )
     .min(1),
-  model: z.enum(['claude-sonnet-4-5', 'claude-opus-4-5']).optional(),
+  model: z
+    .enum(['MiniMax-M2.7', 'deepseek-v4-flash', 'deepseek-reasoner', 'gemini-2.0-flash'])
+    .optional(),
   maxTokens: z.number().int().max(8192).optional(),
 })
 

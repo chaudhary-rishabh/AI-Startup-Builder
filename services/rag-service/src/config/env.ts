@@ -12,8 +12,11 @@ const EnvSchema = z.object({
   AWS_SECRET_ACCESS_KEY: z.string().min(1),
   S3_BUCKET: z.string().min(1),
 
-  ANTHROPIC_API_KEY: z.string().min(1),
-  OPENAI_API_KEY: z.string().min(1),
+  GEMINI_API_KEY: z.string().min(1),
+  GEMINI_MODEL: z.string().default('gemini-2.0-flash'),
+  EMBEDDING_PROVIDER: z.enum(['gemini']).default('gemini'),
+  EMBEDDING_MODEL: z.string().default('text-embedding-004'),
+  PINECONE_EMBEDDING_DIMENSIONS: z.coerce.number().default(768),
 
   PINECONE_API_KEY: z.string().min(1),
   PINECONE_INDEX_NAME: z.string().min(1),

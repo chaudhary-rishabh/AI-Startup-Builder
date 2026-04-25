@@ -20,7 +20,7 @@ describe('PineconeService', () => {
     const svc = new PineconeService()
     const r = await svc.queryHybrid({
       namespace: 'user_test',
-      vector: new Array(3072).fill(0.01),
+      vector: new Array(768).fill(0.01),
       topK: 5,
     })
     expect(Array.isArray(r)).toBe(true)

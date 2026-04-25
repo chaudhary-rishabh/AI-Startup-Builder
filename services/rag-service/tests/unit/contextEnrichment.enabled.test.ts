@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 describe('enrichChunks with CONTEXT_ENRICHMENT_ENABLED=true', () => {
-  it('calls Anthropic and builds enrichedText with prefix', async () => {
+  it('calls Gemini and builds enrichedText with prefix', async () => {
     process.env.CONTEXT_ENRICHMENT_ENABLED = 'true'
     vi.resetModules()
     const { enrichChunks } = await import('../../src/services/contextEnrichment.service.js')

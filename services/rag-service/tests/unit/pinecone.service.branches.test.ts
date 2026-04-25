@@ -28,7 +28,7 @@ const ns = vi.hoisted(() => ({
 const indexApi = vi.hoisted(() => ({
   namespace: vi.fn().mockImplementation(() => ns),
   describeIndexStats: vi.fn().mockResolvedValue({
-    dimension: 3072,
+    dimension: 768,
     namespaces: { user_ns: { recordCount: 5 } },
   }),
 }))
@@ -47,7 +47,7 @@ describe('PineconeService branches', () => {
     ns.deleteMany.mockResolvedValue(undefined)
     ns.deleteAll.mockResolvedValue(undefined)
     indexApi.describeIndexStats.mockResolvedValue({
-      dimension: 3072,
+      dimension: 768,
       namespaces: { user_ns: { recordCount: 5 } },
     })
   })
@@ -148,7 +148,7 @@ describe('PineconeService branches', () => {
   })
 
   it('getNamespaceStats returns null when namespace missing', async () => {
-    indexApi.describeIndexStats.mockResolvedValueOnce({ dimension: 3072, namespaces: {} })
+    indexApi.describeIndexStats.mockResolvedValueOnce({ dimension: 768, namespaces: {} })
     const { PineconeService } = await import('../../src/services/pinecone.service.js')
     const svc = new PineconeService()
     expect(await svc.getNamespaceStats('none')).toBeNull()

@@ -181,7 +181,7 @@ describe('runs routes', () => {
           userId: uid,
           phase: 2,
           agentType: 'prd_generator',
-          model: 'claude-opus-4-5',
+          model: 'MiniMax-M2.7',
           status: 'completed',
         } as never,
       ],
@@ -201,7 +201,7 @@ describe('runs routes', () => {
       phase: 2,
       status: 'completed',
       agentType: 'prd_generator',
-      model: 'claude-opus-4-5',
+      model: 'MiniMax-M2.7',
     } as never)
     const res = await app.request('http://localhost/ai/runs/550e8400-e29b-41d4-a716-446655440099', {
       headers: { Authorization: `Bearer ${token}` },

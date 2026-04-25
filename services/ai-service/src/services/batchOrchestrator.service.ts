@@ -1,15 +1,17 @@
-import Anthropic from '@anthropic-ai/sdk'
-
 import type { AgentType, ProjectContext } from '@repo/types'
 
 import { IntegrationAgent } from '../agents/phase4/integrationAgent.agent.js'
 import { getAgent } from '../agents/registry.js'
 import { env } from '../config/env.js'
+import {
+  chatCompleteWithUsage,
+  streamChatCollect,
+} from '../lib/providers.js'
 import * as generationPlansQueries from '../db/queries/generationPlans.queries.js'
 import type { FileSpec } from '../types/phase4.types.js'
 
 import { crossCheck3B, crossCheck3C } from './crossCheck.service.js'
-import { estimateCost, getMaxOutputTokens, selectModel } from './modelRouter.service.js'
+import { estimateCost, getMaxOutputTokens, resolveModel } from './modelRouter.service.js'
 import { recordTokenUsage } from './tokenBudget.service.js'
 import { publishStreamChunk, publishStreamEvent } from './streamingService.js'
 
@@ -127,13 +129,6 @@ export function calculateMaxTokens(complexity: string): number {
   if (complexity === 'complex') return 8192
   if (complexity === 'medium') return 4096
   return 2048
-}
-
-function anthropicMessageText(msg: Anthropic.Messages.Message): string {
-  return msg.content
-    .filter((b): b is Anthropic.Messages.TextBlock => b.type === 'text')
-    .map((b) => b.text)
-    .join('\n')
 }
 
 function buildIntegrationKeyFiles(
@@ -269,22 +264,24 @@ export async function orchestratePhase4(
     const keyFiles = buildIntegrationKeyFiles(allGeneratedFiles)
     const integrationAgent = getAgent('integration') as IntegrationAgent
     const auditPrompt = integrationAgent.buildAuditPrompt(keyFiles)
-    const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY })
-    const model = selectModel('integration' as AgentType)
-    const auditMsg = await client.messages.create({
+    const { client, model } = resolveModel('integration')
+    const auditRes = await chatCompleteWithUsage(
+      client,
       model,
-      max_tokens: getMaxOutputTokens('integration' as AgentType),
-      system: auditPrompt.system,
-      messages: [{ role: 'user', content: auditPrompt.user }],
-    })
-    const auditRaw = anthropicMessageText(auditMsg)
+      [
+        { role: 'system', content: auditPrompt.system },
+        { role: 'user', content: auditPrompt.user },
+      ],
+      getMaxOutputTokens('integration' as AgentType),
+    )
+    const auditRaw = auditRes.text
     const { data: auditData, success: auditParseOk } = integrationAgent.parseAuditOutput(auditRaw)
     const issues = auditData.issues
     if (!auditParseOk) {
       console.warn('[ai-service] integration audit JSON parse failed; skipping auto-patch')
     }
-    let promptIn = auditMsg.usage?.input_tokens ?? 0
-    let promptOut = auditMsg.usage?.output_tokens ?? 0
+    let promptIn = auditRes.promptTokens
+    let promptOut = auditRes.completionTokens
 
     await publishStreamEvent(runId, 'cross_check', {
       check: 'integration_audit',
@@ -311,16 +308,19 @@ export async function orchestratePhase4(
           currentContent.length > 0 ? currentContent : '\n',
           issue,
         )
-        const patchMsg = await client.messages.create({
+        const patchRes = await chatCompleteWithUsage(
+          client,
           model,
-          max_tokens: getMaxOutputTokens('integration' as AgentType),
-          system: patchPrompt.system,
-          messages: [{ role: 'user', content: patchPrompt.user }],
-        })
-        const updatedRaw = anthropicMessageText(patchMsg)
+          [
+            { role: 'system', content: patchPrompt.system },
+            { role: 'user', content: patchPrompt.user },
+          ],
+          getMaxOutputTokens('integration' as AgentType),
+        )
+        const updatedRaw = patchRes.text
         const { data: patchData } = integrationAgent.parsePatchOutput(updatedRaw)
-        promptIn += patchMsg.usage?.input_tokens ?? 0
-        promptOut += patchMsg.usage?.output_tokens ?? 0
+        promptIn += patchRes.promptTokens
+        promptOut += patchRes.completionTokens
         await fetch(saveUrl, {
           method: 'POST',
           headers: {
@@ -374,8 +374,7 @@ export async function orchestratePhase4(
 
   const byBatch = groupByBatch(files)
   const batchGroups = findParallelGroups(files)
-  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY })
-  const model = selectModel(agentType as AgentType)
+  const { client, model } = resolveModel(agentType)
   let promptTokensTotal = 0
   let completionTokensTotal = 0
   const plan = planRow
@@ -417,27 +416,21 @@ export async function orchestratePhase4(
 
       const prompt = await resolveFilePrompt(agentType as AgentType, file, priorForAgent, context)
       let fileContent = ''
-      const stream = await client.messages.stream({
+      const collected = await streamChatCollect(
+        client,
         model,
-        max_tokens: getMaxOutputTokens(agentType as AgentType),
-        system: prompt.system,
-        messages: [{ role: 'user', content: prompt.user }],
-      })
-      for await (const ev of stream) {
-        if (
-          ev.type === 'content_block_delta' &&
-          ev.delta.type === 'text_delta' &&
-          'text' in ev.delta
-        ) {
-          const piece = ev.delta.text
-          fileContent += piece
+        [
+          { role: 'system', content: prompt.system },
+          { role: 'user', content: prompt.user },
+        ],
+        getMaxOutputTokens(agentType as AgentType),
+        async (piece) => {
           await publishStreamChunk(runId, piece)
-        }
-      }
-      const final = await stream.finalMessage()
-      const usage = final.usage
-      promptIn += usage?.input_tokens ?? 0
-      promptOut += usage?.output_tokens ?? 0
+        },
+      )
+      fileContent = collected.fullText
+      promptIn += collected.promptTokens
+      promptOut += collected.completionTokens
 
       const saveUrl = `${projectServiceBase()}/internal/projects/${encodeURIComponent(projectId)}/files`
       await fetch(saveUrl, {

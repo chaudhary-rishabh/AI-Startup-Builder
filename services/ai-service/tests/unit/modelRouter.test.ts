@@ -3,28 +3,32 @@ import { describe, expect, it } from 'vitest'
 import {
   getMaxOutputTokens,
   getRAGEligibleAgents,
-  OPUS_AGENTS,
+  resolveModel,
   selectModel,
   selectModelForContextGeneration,
 } from '../../src/services/modelRouter.service.js'
 
 describe('modelRouter', () => {
-  it('maps prd_generator to opus', () => {
-    expect(selectModel('prd_generator')).toBe('claude-opus-4-5')
+  it('maps prd_generator to minimax', () => {
+    expect(selectModel('prd_generator')).toBe('MiniMax-M2.7')
   })
 
-  it('maps idea_analyzer to sonnet', () => {
-    expect(selectModel('idea_analyzer')).toBe('claude-sonnet-4-5')
+  it('maps idea_analyzer to minimax', () => {
+    expect(selectModel('idea_analyzer')).toBe('MiniMax-M2.7')
   })
 
-  it('uses opus for all OPUS_AGENTS', () => {
-    for (const t of OPUS_AGENTS) {
-      expect(selectModel(t)).toBe('claude-opus-4-5')
-    }
+  it('maps backend to deepseek', () => {
+    expect(selectModel('backend')).toBe('deepseek-v4-flash')
   })
 
-  it('selectModelForContextGeneration returns haiku', () => {
-    expect(selectModelForContextGeneration()).toBe('claude-haiku-4-5')
+  it('resolveModel returns deepseek client for integration', () => {
+    const r = resolveModel('integration')
+    expect(r.role).toBe('deepseek')
+    expect(r.model).toBe('deepseek-v4-flash')
+  })
+
+  it('selectModelForContextGeneration returns gemini model id', () => {
+    expect(selectModelForContextGeneration()).toBe('gemini-2.0-flash')
   })
 
   it('getRAGEligibleAgents returns exactly four agents', () => {

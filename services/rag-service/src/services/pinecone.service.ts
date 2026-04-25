@@ -197,7 +197,7 @@ export class PineconeService {
       if (!nsStats) return null
       return {
         vectorCount: nsStats.recordCount ?? 0,
-        dimension: stats.dimension ?? 3072,
+        dimension: stats.dimension ?? 768,
       }
     } catch {
       return null

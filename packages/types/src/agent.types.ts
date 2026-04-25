@@ -1,6 +1,10 @@
 import type { CanvasElement, CanvasPage } from './project.types.js'
 
-export type AgentModel = 'claude-sonnet-4-5' | 'claude-opus-4-5'
+export type AgentModel =
+  | 'MiniMax-M2.7'
+  | 'deepseek-v4-flash'
+  | 'deepseek-reasoner'
+  | 'gemini-2.0-flash'
 
 // All 18 agent types across 6 phases — must stay in sync with AgentType in validators
 export type AgentType =

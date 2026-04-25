@@ -412,7 +412,15 @@ export interface EmailTemplatePreview {
 }
 
 export interface IntegrationKey {
-  service: 'anthropic' | 'openai' | 'stripe' | 'github' | 'resend' | 'pinecone'
+  service:
+    | 'minimax'
+    | 'deepseek'
+    | 'deepseek_r1'
+    | 'gemini'
+    | 'stripe'
+    | 'github'
+    | 'resend'
+    | 'pinecone'
   label: string
   apiKey: string
   isSet: boolean

@@ -20,6 +20,23 @@ export async function checkTokenBudget(
   userId: string,
   estimatedTokens: number,
 ): Promise<TokenBudgetCheckResult> {
+  if (process.env.BILLING_BYPASS === 'true') {
+    return {
+      allowed: true,
+      remaining: 999_999_999,
+      limit: 999_999_999,
+      bonusTokens: 0,
+      effectiveLimit: 999_999_999,
+      effectiveRemaining: 999_999_999,
+      percentUsed: 0,
+      creditState: 'active',
+      isOneTimeCredits: false,
+      resetAt: null,
+      planTier: 'free',
+      tokensUsed: 0,
+    }
+  }
+
   try {
     const budget = await getTokenBudget(userId)
     if (budget.isUnlimited) {

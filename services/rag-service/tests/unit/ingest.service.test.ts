@@ -117,7 +117,7 @@ describe('runIngestionPipeline', () => {
       costUsd: '0',
     })
     m.embedTexts.mockResolvedValue({
-      embeddings: [new Array(3072).fill(0.01)],
+      embeddings: [new Array(768).fill(0.01)],
       model: 'text-embedding-3-large',
       totalTokens: 1,
     })

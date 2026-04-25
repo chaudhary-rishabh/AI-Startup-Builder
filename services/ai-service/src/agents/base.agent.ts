@@ -1,9 +1,9 @@
-import Anthropic from '@anthropic-ai/sdk'
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 
-import { env } from '../config/env.js'
-import { estimateCost, getMaxOutputTokens, selectModel } from '../services/modelRouter.service.js'
+import { chatComplete, streamChat } from '../lib/providers.js'
+import { estimateCost, getMaxOutputTokens, resolveModel } from '../services/modelRouter.service.js'
 
-import type { AgentModel, AgentType, ProjectContext } from '@repo/types'
+import type { AgentType, ProjectContext } from '@repo/types'
 
 export interface AgentExecutionInput {
   projectId: string
@@ -31,19 +31,6 @@ export interface AgentRunResult {
 export abstract class BaseAgent {
   abstract readonly agentType: AgentType
   abstract readonly phase: number
-  protected readonly client: Anthropic
-  private _model: AgentModel | undefined
-
-  constructor() {
-    this.client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY })
-  }
-
-  protected get model(): AgentModel {
-    if (!this._model) {
-      this._model = selectModel(this.agentType)
-    }
-    return this._model
-  }
 
   abstract buildSystemPrompt(context: ProjectContext, documentContent: string): string
 
@@ -92,34 +79,26 @@ export abstract class BaseAgent {
     onProgress?: (event: string) => void,
   ): Promise<AgentRunResult> {
     onProgress?.('build_prompt')
+    const { client, model } = resolveModel(this.agentType)
     const system = this.buildSystemPrompt(input.context, input.documentContent)
     const history = input.conversationHistory.slice(-10)
     const userContent = input.userMessage?.trim().length
       ? input.userMessage!
       : 'Produce the structured output for this phase as JSON.'
-    const messages: Anthropic.MessageParam[] = [
+
+    const messages: ChatCompletionMessageParam[] = [
+      { role: 'system', content: system },
       ...history.map((m) => ({ role: m.role, content: m.content })),
       { role: 'user', content: userContent },
     ]
 
+    const maxOut = getMaxOutputTokens(this.agentType)
     let rawText = ''
-    const stream = await this.client.messages.stream({
-      model: this.model,
-      max_tokens: getMaxOutputTokens(this.agentType),
-      system,
-      messages,
-    })
+
     try {
-      for await (const ev of stream) {
-        if (
-          ev.type === 'content_block_delta' &&
-          ev.delta.type === 'text_delta' &&
-          'text' in ev.delta
-        ) {
-          const piece = ev.delta.text
-          rawText += piece
-          onChunk(piece)
-        }
+      for await (const piece of streamChat(client, model, messages, maxOut)) {
+        onChunk(piece)
+        rawText += piece
       }
     } catch (err) {
       const parsed = this.parseOutput(rawText)
@@ -137,13 +116,12 @@ export abstract class BaseAgent {
       throw err
     }
 
-    const final = await stream.finalMessage()
-    const usage = final.usage
-    const promptTokens = usage?.input_tokens ?? 0
-    const completionTokens = usage?.output_tokens ?? 0
+    const msgLen = messages.reduce((acc, m) => acc + JSON.stringify(m.content).length, 0)
+    const promptTokens = Math.max(1, Math.ceil(msgLen / 4))
+    const completionTokens = Math.max(1, Math.ceil(rawText.length / 4))
     const totalTokens = promptTokens + completionTokens
     const parsed = this.parseOutput(rawText)
-    const costUsd = estimateCost(this.model, promptTokens, completionTokens)
+    const costUsd = estimateCost(model, promptTokens, completionTokens)
     return {
       outputData: parsed.data ?? {},
       rawText,
@@ -153,5 +131,13 @@ export abstract class BaseAgent {
       totalTokens,
       costUsd,
     }
+  }
+
+  async runSync(
+    messages: ChatCompletionMessageParam[],
+    maxTokens = 2048,
+  ): Promise<string> {
+    const { client, model } = resolveModel(this.agentType)
+    return chatComplete(client, model, messages, maxTokens)
   }
 }

@@ -14,13 +14,13 @@
     "lint": "eslint src/"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.27.0",
     "@aws-sdk/client-s3": "^3.600.0",
     "@aws-sdk/s3-request-presigner": "^3.600.0",
     "@hono/node-server": "^1.12.0",
     "@pinecone-database/pinecone": "^3.0.0",
     "@repo/db": "workspace:*",
     "@repo/types": "workspace:*",
+    "@google/generative-ai": "^0.24.1",
     "@repo/validators": "workspace:*",
     "bullmq": "^5.12.0",
     "cheerio": "^1.0.0",
@@ -31,7 +31,6 @@
     "jose": "^5.6.0",
     "js-tiktoken": "^1.0.15",
     "mammoth": "^1.8.0",
-    "openai": "^4.52.0",
     "pdfjs-dist": "^4.6.0",
     "pg": "^8.12.0",
     "uuid": "^10.0.0",

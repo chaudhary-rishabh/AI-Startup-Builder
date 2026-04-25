@@ -31,28 +31,20 @@ vi.mock('@aws-sdk/client-s3', () => {
   }
 })
 
-vi.mock('openai', () => {
-  return {
-    default: vi.fn().mockImplementation(() => ({
-      embeddings: {
-        create: vi.fn().mockResolvedValue({
-          data: [{ index: 0, embedding: new Array(3072).fill(0.01) }],
-          usage: { total_tokens: 10 },
-        }),
-      },
-    })),
-  }
-})
+const mockEmbeddingVector = new Array(768).fill(0.01)
 
-vi.mock('@anthropic-ai/sdk', () => {
+vi.mock('@google/generative-ai', () => {
+  const makeModel = () => ({
+    embedContent: vi.fn().mockResolvedValue({
+      embedding: { values: [...mockEmbeddingVector] },
+    }),
+    generateContent: vi.fn().mockResolvedValue({
+      response: { text: () => 'context prefix' },
+    }),
+  })
   return {
-    default: vi.fn().mockImplementation(() => ({
-      messages: {
-        create: vi.fn().mockResolvedValue({
-          content: [{ type: 'text', text: 'context prefix' }],
-          usage: { cache_read_input_tokens: 100, output_tokens: 20 },
-        }),
-      },
+    GoogleGenerativeAI: vi.fn().mockImplementation(() => ({
+      getGenerativeModel: vi.fn().mockImplementation(() => makeModel()),
     })),
   }
 })
@@ -70,7 +62,7 @@ vi.mock('@pinecone-database/pinecone', () => {
       index: vi.fn().mockReturnValue({
         namespace: mockNamespace,
         describeIndexStats: vi.fn().mockResolvedValue({
-          dimension: 3072,
+          dimension: 768,
           namespaces: { test: { recordCount: 0 } },
         }),
       }),

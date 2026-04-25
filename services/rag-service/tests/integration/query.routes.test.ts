@@ -71,7 +71,7 @@ describe('query routes (integration-style, mocked backends)', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     })
-    getPineconeNsStats.mockResolvedValue({ vectorCount: 10, dimension: 3072 })
+    getPineconeNsStats.mockResolvedValue({ vectorCount: 10, dimension: 768 })
     encodeQuery.mockResolvedValue({ indices: [1], values: [0.5] })
     queryHybrid.mockResolvedValue([])
     listDocumentsByUserForDeletion.mockResolvedValue([])

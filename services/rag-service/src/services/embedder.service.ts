@@ -1,7 +1,10 @@
-import OpenAI from 'openai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
 import { env } from '../config/env.js'
 import { AppError } from '../lib/errors.js'
+
+const gemini = new GoogleGenerativeAI(env.GEMINI_API_KEY)
+export const EMBEDDING_MODEL = process.env['EMBEDDING_MODEL'] ?? 'text-embedding-004'
 
 export interface EmbeddingResult {
   embeddings: number[][]
@@ -9,61 +12,75 @@ export interface EmbeddingResult {
   totalTokens: number
 }
 
-export const EMBEDDING_MODEL = 'text-embedding-3-large'
-export const EMBEDDING_DIMENSIONS = 3072
+export const EMBEDDING_DIMENSIONS = env.PINECONE_EMBEDDING_DIMENSIONS
 export const BATCH_SIZE = 100
 
-const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY })
-
-function classifyOpenAiError(err: unknown): AppError {
+function classifyEmbeddingError(err: unknown): AppError {
   const e = err as { status?: number; message?: string }
   if (e.status === 429) {
     return new AppError(
       'EMBEDDING_RATE_LIMIT',
-      'OpenAI embeddings rate limit hit. Retry after backoff.',
+      'Gemini embeddings rate limit hit. Retry after backoff.',
       429,
     )
   }
   if (typeof e.status === 'number' && e.status >= 500) {
-    return new AppError('EMBEDDING_SERVICE_UNAVAILABLE', 'OpenAI embeddings API unavailable.', 503)
+    return new AppError('EMBEDDING_SERVICE_UNAVAILABLE', 'Gemini embeddings API unavailable.', 503)
   }
   return new AppError('EMBEDDING_FAILED', e.message ?? 'Embedding failed', 502)
+}
+
+function approxTokens(texts: string[]): number {
+  return texts.reduce((acc, t) => acc + Math.ceil(t.length / 4), 0)
+}
+
+export async function embed(texts: string[]): Promise<number[][]> {
+  if (texts.length === 0) return []
+
+  const model = gemini.getGenerativeModel({ model: EMBEDDING_MODEL })
+  const out: number[][] = []
+
+  for (let i = 0; i < texts.length; i += BATCH_SIZE) {
+    const batch = texts.slice(i, i + BATCH_SIZE)
+    try {
+      const results = await Promise.all(batch.map((text) => model.embedContent(text)))
+      for (const r of results) {
+        const vec = r.embedding?.values
+        if (!vec || vec.length === 0) {
+          throw new AppError('EMBEDDING_FAILED', 'No embedding values returned', 502)
+        }
+        if (vec.length !== env.PINECONE_EMBEDDING_DIMENSIONS) {
+          throw new AppError(
+            'EMBEDDING_DIMENSION_MISMATCH',
+            `Expected ${env.PINECONE_EMBEDDING_DIMENSIONS}-dim vectors (Gemini text-embedding-004 / Pinecone); got ${vec.length}`,
+            502,
+          )
+        }
+        out.push([...vec])
+      }
+    } catch (err) {
+      if (err instanceof AppError) throw err
+      throw classifyEmbeddingError(err)
+    }
+  }
+
+  return out
 }
 
 export async function embedTexts(texts: string[]): Promise<EmbeddingResult> {
   if (texts.length === 0) {
     return { embeddings: [], model: EMBEDDING_MODEL, totalTokens: 0 }
   }
-
-  const batches: string[][] = []
-  for (let i = 0; i < texts.length; i += BATCH_SIZE) {
-    batches.push(texts.slice(i, i + BATCH_SIZE))
+  const embeddings = await embed(texts)
+  return {
+    embeddings,
+    model: EMBEDDING_MODEL,
+    totalTokens: approxTokens(texts),
   }
-
-  const allEmbeddings: number[][] = []
-  let totalTokens = 0
-
-  for (const batch of batches) {
-    try {
-      const response = await openai.embeddings.create({
-        model: EMBEDDING_MODEL,
-        input: batch,
-        encoding_format: 'float',
-      })
-      response.data.sort((a, b) => a.index - b.index)
-      allEmbeddings.push(...response.data.map((d) => d.embedding))
-      totalTokens += response.usage.total_tokens
-    } catch (err) {
-      throw classifyOpenAiError(err)
-    }
-  }
-
-  return { embeddings: allEmbeddings, model: EMBEDDING_MODEL, totalTokens }
 }
 
 export async function embedSingleText(text: string): Promise<number[]> {
-  const result = await embedTexts([text])
-  const first = result.embeddings[0]
+  const [first] = await embed([text])
   if (!first) throw new AppError('EMBEDDING_FAILED', 'No embedding returned', 502)
   return first
 }

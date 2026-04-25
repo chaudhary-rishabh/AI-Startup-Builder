@@ -7,7 +7,7 @@ Before running rag-service, create the Pinecone index:
 1. Go to [https://app.pinecone.io](https://app.pinecone.io).
 2. Create an index with:
    - Name: `PINECONE_INDEX_NAME` from your env
-   - Dimensions: `3072`
+   - Dimensions: `768` (Gemini `text-embedding-004`, must match index)
    - Metric: `dotproduct` (required for hybrid BM25 + dense search)
    - Type: `Serverless` (recommended)
 3. Copy the API key to `PINECONE_API_KEY`.

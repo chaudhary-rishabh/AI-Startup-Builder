@@ -4,16 +4,15 @@ import type { ProjectContext } from '@repo/types'
 
 const findPlanByProjectId = vi.hoisted(() => vi.fn())
 const updatePlanProgress = vi.hoisted(() => vi.fn())
-const anthropicMessages = vi.hoisted(() => ({
-  create: vi.fn(),
-  stream: vi.fn(),
-}))
+const chatCompleteWithUsage = vi.hoisted(() => vi.fn())
 
-vi.mock('@anthropic-ai/sdk', () => ({
-  default: class {
-    messages = anthropicMessages
-  },
-}))
+vi.mock('../../src/lib/providers.js', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../../src/lib/providers.js')>()
+  return {
+    ...mod,
+    chatCompleteWithUsage,
+  }
+})
 
 vi.mock('../../src/db/queries/generationPlans.queries.js', () => ({
   findPlanByProjectId,
@@ -41,10 +40,11 @@ describe('orchestratePhase4', () => {
     registerAllAgents()
     vi.clearAllMocks()
     vi.mocked(publishStreamEvent).mockResolvedValue(undefined)
-    anthropicMessages.create.mockReset()
-    anthropicMessages.create.mockResolvedValue({
-      content: [{ type: 'text', text: '[]' }],
-      usage: { input_tokens: 5, output_tokens: 6 },
+    chatCompleteWithUsage.mockReset()
+    chatCompleteWithUsage.mockResolvedValue({
+      text: '[]',
+      promptTokens: 5,
+      completionTokens: 6,
     })
     fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const s = String(input)
@@ -92,7 +92,7 @@ describe('orchestratePhase4', () => {
     await orchestratePhase4('r1', 'p1', 'u1', 'integration', ctx)
 
     expect(findPlanByProjectId).toHaveBeenCalledWith('p1')
-    expect(anthropicMessages.create).toHaveBeenCalledTimes(1)
+    expect(chatCompleteWithUsage).toHaveBeenCalledTimes(1)
     expect(publishStreamEvent).toHaveBeenCalledWith(
       'r1',
       'cross_check',

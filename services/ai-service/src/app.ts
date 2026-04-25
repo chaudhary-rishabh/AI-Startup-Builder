@@ -8,6 +8,7 @@ import { readyHandler } from './ready.js'
 import adminRoutes from './routes/admin.routes.js'
 import catalogueRoutes from './routes/catalogue.routes.js'
 import chatRoutes from './routes/chat.routes.js'
+import modelsRoutes from './routes/models.routes.js'
 import runsRoutes from './routes/runs.routes.js'
 
 export function createApp(): Hono {
@@ -19,6 +20,7 @@ export function createApp(): Hono {
   const ai = new Hono()
   ai.route('/', runsRoutes)
   ai.route('/', chatRoutes)
+  ai.route('/', modelsRoutes)
   ai.route('/', catalogueRoutes)
   ai.route('/', adminRoutes)
 

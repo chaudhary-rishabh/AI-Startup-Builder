@@ -108,6 +108,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Safety — billing bypass must be off in production
+        run: |
+          if [ "${{ vars.BILLING_BYPASS }}" = "true" ]; then
+            echo "ERROR: BILLING_BYPASS=true detected. Aborting deploy."
+            exit 1
+          fi
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:

@@ -6,14 +6,23 @@ vi.mock('js-tiktoken', () => ({
   }),
 }))
 
-const anthropicCreate = vi.hoisted(() => vi.fn())
-
-vi.mock('@anthropic-ai/sdk', () => ({
-  default: class AnthropicMock {
-    messages = { create: anthropicCreate }
-  },
+vi.mock('../../src/lib/providers.js', () => ({
+  geminiComplete: vi.fn().mockResolvedValue('compressed excerpt'),
+  chatComplete: vi.fn(),
+  streamChat: vi.fn(),
+  streamChatCollect: vi.fn(),
+  chatCompleteWithUsage: vi.fn(),
+  minimaxClient: {},
+  MINIMAX_MODEL: 'MiniMax-M2.7',
+  deepseekClient: {},
+  DEEPSEEK_MODEL: 'deepseek-v4-flash',
+  deepseekR1Client: {},
+  DEEPSEEK_R1_MODEL: 'deepseek-reasoner',
+  geminiClient: {},
+  GEMINI_MODEL: 'gemini-2.0-flash',
 }))
 
+import { geminiComplete } from '../../src/lib/providers.js'
 import * as contextualRag from '../../src/services/contextualRag.service.js'
 import * as docIntel from '../../src/services/documentIntelligence.service.js'
 
@@ -41,7 +50,8 @@ describe('documentIntelligence.service', () => {
   const originalFetch = global.fetch
 
   beforeEach(() => {
-    anthropicCreate.mockReset()
+    geminiComplete.mockReset()
+    geminiComplete.mockResolvedValue('compressed excerpt')
   })
 
   afterEach(() => {
@@ -78,9 +88,6 @@ describe('documentIntelligence.service', () => {
   })
 
   it("returns mode 'compressed' when 80K < totalTokens <= 200K", async () => {
-    anthropicCreate.mockResolvedValue({
-      content: [{ type: 'text', text: 'compressed excerpt' }],
-    })
     const body = 'x'.repeat(50_000)
     global.fetch = ragFetch(
       [
@@ -97,11 +104,7 @@ describe('documentIntelligence.service', () => {
     )
     expect(r.mode).toBe('compressed')
     expect(r.wasCompressed).toBe(true)
-    expect(anthropicCreate).toHaveBeenCalled()
-    const first = anthropicCreate.mock.calls[0]?.[0] as {
-      system: Array<{ cache_control?: { type: string }; text: string }>
-    }
-    expect(first.system[0]?.cache_control?.type).toBe('ephemeral')
+    expect(vi.mocked(geminiComplete)).toHaveBeenCalled()
   })
 
   it("returns mode 'contextual_rag' when totalTokens > 200K", async () => {

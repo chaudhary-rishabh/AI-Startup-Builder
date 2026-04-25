@@ -39,7 +39,7 @@ const ns = vi.hoisted(() => ({
 
 const pine = vi.hoisted(() => ({
   deleteVectorsByDocId: vi.fn().mockResolvedValue(undefined),
-  getNamespaceStats: vi.fn().mockResolvedValue({ vectorCount: 2, dimension: 3072 }),
+  getNamespaceStats: vi.fn().mockResolvedValue({ vectorCount: 2, dimension: 768 }),
   queryHybrid: vi.fn().mockResolvedValue([]),
 }))
 

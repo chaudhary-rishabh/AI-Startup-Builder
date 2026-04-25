@@ -1,8 +1,7 @@
-import Anthropic from '@anthropic-ai/sdk'
 import { getEncoding } from 'js-tiktoken'
 
 import { env } from '../config/env.js'
-import { selectModelForContextGeneration } from './modelRouter.service.js'
+import { geminiComplete } from '../lib/providers.js'
 import { retrieveForAgent } from './contextualRag.service.js'
 
 import type { ProjectContext } from '@repo/types'
@@ -77,33 +76,14 @@ export function formatDocumentBlock(
 }
 
 export async function contextualCompress(doc: UserDocument, agentTask: string): Promise<string> {
-  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY })
-  const model = selectModelForContextGeneration()
-  const msg = await client.messages.create({
-    model,
-    max_tokens: 4096,
-    system: [
-      {
-        type: 'text',
-        text: `<document>\n${doc.text}\n</document>`,
-        cache_control: { type: 'ephemeral' },
-      } as never,
-    ],
-    messages: [
-      {
-        role: 'user',
-        content: `Given this full document, extract ONLY the sections relevant to this agent task: ${agentTask}.
+  const prompt = `<document>
+${doc.text}
+</document>
+Given this full document, extract ONLY the sections relevant to this agent task: ${agentTask}.
 Return the most relevant 2000-3000 tokens of content.
 Preserve exact numbers, names, and specific data.
-Omit general background and irrelevant sections.`,
-      },
-    ],
-  })
-  const text = msg.content
-    .filter((b): b is Anthropic.Messages.TextBlock => b.type === 'text')
-    .map((b) => b.text)
-    .join('\n')
-  return text
+Omit general background and irrelevant sections.`
+  return geminiComplete(prompt, 4096)
 }
 
 export async function resolveDocumentContext(
